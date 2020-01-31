@@ -1,0 +1,131 @@
+
+#+BEGIN_SRC bash
+group=566
+api="https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5"
+http="http --session-read-only=ucd"
+
+cats=users
+
+next="${api}/${cats}?group-membership=implicit&groups=${group}&detail=full"
+let n=0;
+while [[ -n ${next} ]]; do
+  fn=feed/${cats}.${n};
+  ${http} "${next}" | xmllint --format - | tee ${fn};
+  next=$(xmlstarlet sel -T -N a="http://www.w3.org/2005/Atom" -t -v '//api:page[@position="next"]/@href' ${fn});
+  let n+=1;
+done
+
+#+END_SRC
+
+#+RESULTS:
+| <?xml                                                                                                    | 1.0                                                    | utf-8                                        |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <feed                                                                                                    | http://www.w3.org/2005/Atom                            | http://www.symplectic.co.uk/publications/api |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <api:schema-version>5.5</api:schema-version>                                                             |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <category                                                                                                | http://www.symplectic.co.uk/publications/atom/feeds/   | error-list                                   | label="Error  | list"/>    |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <id>tag:elements@organisation,5.18:/elements-secure-api/v5.5/last-errors</id>                            |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <updated>2020-01-30T14:12:38.6250841-08:00</updated>                                                     |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <generator                                                                                               | https://qa-oapolicy.universityofcalifornia.edu/        | 5.18                                         | Publication   | Management | System</generator> |          |            |      |             |                    |     |      |              |      |      |                      |
+| <icon>https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5/symplectic.ico</icon> |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <rights>This                                                                                             | data                                                   | is                                           | the           | property   | of                 | the      | University | of   | California, | and                | can | only | be           | used | with | permission.</rights> |
+| <subtitle                                                                                                | xhtml                                                  |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <div                                                                                                     | http://www.w3.org/1999/xhtml                           |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <p>This                                                                                                  | feed                                                   | describes                                    | the           | errors     | that               | occurred | during     | the  | processing  | of                 | the | last | request.</p> |      |      |                      |
+| </div>                                                                                                   |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| </subtitle>                                                                                              |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <title>Errors</title>                                                                                    |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <author>                                                                                                 |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <name>UC                                                                                                 | Publication                                            | Management                                   | System</name> |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| </author>                                                                                                |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <entry>                                                                                                  |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <id>tag:elements@organisation,5.18:/elements-secure-api/v5.5/last-errors/1</id>                          |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <category                                                                                                | http://www.symplectic.co.uk/publications/atom/entries/ | error                                        | Error         |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <updated>2020-01-30T14:12:38.6250841-08:00</updated>                                                     |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <title>Error:                                                                                            | resource                                               | not                                          | found</title> |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <content                                                                                                 | xhtml                                                  |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <div                                                                                                     | http://www.w3.org/1999/xhtml                           |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <p>The                                                                                                   | resource                                               | you                                          | have          | requested  | does               | not      | exist.</p> |      |             |                    |     |      |              |      |      |                      |
+| </div>                                                                                                   |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| </content>                                                                                               |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| <api:error                                                                                               | code="resource                                         | not                                          | found">The    | resource   | you                | have     | requested  | does | not         | exist.</api:error> |     |      |              |      |      |                      |
+| </entry>                                                                                                 |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+| </feed>                                                                                                  |                                                        |                                              |               |            |                    |          |            |      |             |                    |     |      |              |      |      |                      |
+
+#+BEGIN_SRC bash
+group=566
+api="https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5"
+http="http --session-read-only=ucd"
+
+cats=publicaations
+
+next="${api}/${cats}?group-membership=implicit&groups=${group}&detail=full"
+let n=0;
+while [[ -n ${next} ]]; do
+  printf -v N "%03d" $n
+  fn=${cats}.${N};
+  echo ${fn};
+  ${http} "${next}" | xmllint --format - > ${fn};
+  next=$(xmlstarlet sel -T -N a="http://www.w3.org/2005/Atom" -t -v '//api:page[@position="next"]/@href' ${fn});
+  let n+=1;
+done
+
+#+END_SRC
+
+Now we want to extract all these users and publications to their proper location
+
+#+BEGIN_SRC bash
+cats=users
+sel="xmlstarlet sel -N a=http://www.w3.org/2005/Atom"
+for f in ${cats}.[0-9]*; do
+ for id in $(${sel} -t -v '//a:entry/api:object/@id' $f); do
+   ${sel} -D -t -c "//a:entry[api:object/@id=${id}]" $f | tee users/${id}
+ done
+done
+#+END_SRC
+
+
+#+BEGIN_SRC bash
+cats=publications
+[[-d ${cats} ]] || mkdir -p ${cats}
+sel="xmlstarlet sel -N a=http://www.w3.org/2005/Atom"
+for f in ${cats}.[0-9][0-9][0-9]*; do
+ for id in $(${sel} -t -v '//a:entry/api:object/@id' $f); do
+   echo ${cats}/${id}
+   ${sel} -D -t -c "//a:entry[api:object/@id=${id}]" $f > ${cats}/${id}
+ done
+done
+#+END_SRC
+
+And Now relationships.  For every User, we need to make sure we get all the
+passed relationships.
+
+#+BEGIN_SRC bash
+
+for f in users/*; do
+  u=$(basename $f);
+  next=$($sel -t -v //api:relationships/@href $f)
+  let n=0;
+  while [[ -n ${next} ]]; do
+    printf -v N "%03d" $n
+    fn=${u}.relationships.${N};
+    echo ${fn};
+    ${http} "${next}" | xmllint --format - > ${fn};
+    next=$(xmlstarlet sel -T -N a="http://www.w3.org/2005/Atom" -t -v '//api:page[@position="next"]/@href' ${fn});
+    let n+=1;
+  done
+done
+#+END_SRC
+
+And now we can create all the individual ones.
+
+#+BEGIN_SRC bash
+cats=relationships
+[[-d ${cats} ]] || mkdir -p ${cats}
+sel="xmlstarlet sel -N a=http://www.w3.org/2005/Atom"
+for f in *.${cats}.[0-9][0-9][0-9]*; do
+ echo $f
+ for id in $(${sel} -t -v '//a:entry/api:relationship/@id' $f); do
+   echo ${cats}/${id}
+   ${sel} -D -t -c "//a:entry[api:relationship/@id=${id}]" $f > ${cats}/${id}
+ done
+done
+#+END_SRC

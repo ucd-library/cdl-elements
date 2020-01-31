@@ -1,0 +1,681 @@
+#! /usr/bin/env bash
+
+: <<=cut
+=pod
+
+=head1  NAME
+
+elements - Harvest an Elements feed.
+
+=head1 SYNOPSIS
+
+elements [--api=<elements_endpoint>] [-S|--session=<httpie session>] \
+         [-b|--base=<base>] [-n|--dry-run] [-p|--print] [-h|--help]\
+  <command> [<args>]
+
+  where <command> is one of harvest
+
+elements is a script the simplifies the retrieval of an elements feed API.
+L</"COMMANDS"> is summary of the commands that are available.
+
+=head1 GLOBAL OPTIONS
+
+=over 4
+
+=item B<--api=I<elements_endpoint>>
+
+This is the http address for the elements endpoint.
+
+=item B<-S|--session|--http_session=I<http_session>>
+
+Set the HTTPIE session variable. It is equivalent to the
+L<httpie|https://httpie.org/> session variable, and are shared in that command
+configuration. Sessions primarily keep the basic authentication parameters
+saved. By default the B<elements> session is used.
+
+=item B<-b|--base = directory>
+
+Specify the base directory for your feed results, default C<base=./>. Under this
+directory, we have temporary C<feed> directory holding the individual calls
+to the elements backend, and C<raw-records> which stores the XML files for the
+individual records. Under C<raw-records> are C<users>,C<relationships>, C<groups>
+
+
+=item B<-n|--dry-run>
+
+Show what you would do do not really do it. Because some commands require
+multiple access to the server, this command does not always work properly :(.
+
+=item B<-h|--help>
+
+Shows the manpage for the program. The help pages are embedded in the script and
+require the functions, C<pod2usage> and C<pod2text> to work properly.
+
+=back
+
+=cut
+
+function _parse_yaml() {
+  local prefix=$2
+  local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+  sed -ne "s|^\($s\)\($w\)$s:$s\"\(.*\)\"$s\$|\1$fs\2$fs\3|p" \
+      -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p"  $1 |
+    awk -F$fs '{
+      indent = length($1)/2;
+      vname[indent] = $2;
+      for (i in vname) {if (i > indent) {delete vname[i]}}
+      if (length($3) > 0) {
+         vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+         printf("G[%s%s]=\"%s\"\n", vn, $2, $3);
+      }
+   }'
+}
+
+function init() {
+    local opts=`$GETOPT -o A:bnhS:v --long verbose,base:,api:,http_session:,session:,dry-run,help -n 'elements' -- "$@"`
+    if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+    eval set -- "$opts"
+
+    declare -A CMD;
+    while true; do
+	    case $1 in
+        -A | --api) CMD[api]=$2; shift 2;;
+	      --session | --http_session) CMD[http_session]=$2;  shift 2;;
+	      -b | --base) G[base]=$2;  shift 2;;
+	      -v | --verbose) G[verbose]=1;  shift 2;;
+	      -n | --dry-run) G[noop]=1; shift ;;
+	      --print | --http_print) CMD[http_print]=$2; shift 2;;
+        -h | --help ) exec pod2text $0;;
+	      -- ) shift; break;;
+	      *) shift; break;
+      esac
+    done
+
+    # Read the configuration file
+    config=${G[base]}/config.yml
+    if [[ -f $config ]]; then
+      eval $(_parse_yaml "$config")
+    fi
+
+    # COMMAND LINE FOR THESE OVER YAML file
+    for i in http_session http_print; do
+      [[ -n ${CMD[$i]} ]] && G[$i]=${CMD[$i]};
+    done
+
+}
+
+
+
+: <<='cut'
+
+=pod
+
+=head1 COMMANDS
+
+Next there are a set of commands that communicate with the CDL service. Note,
+that ezid uses L<httpie|https://httpie.org/> for its http communcation. This
+allows users to combine ezid with other httpie requests if required. Login
+infomation is stored using the standard C<httpie> methodology, see L</"GLOBAL OPTIONS"> for httpid options.
+
+C<elements [options] harvest --full> Harvests a number of feeds from the
+Elements database and stores each record in a separate file.  This is to match how
+the Sympletic Harvester works
+
+=cut
+
+function main.cmd () {
+    cmd=$1
+    shift;
+    case $cmd in
+	    get | login | feed) # API requests
+	      $cmd "$@";
+	      ;;
+	    group.sub | group.membership ) # group commands
+	      $cmd "$@";
+	      ;;
+	    feed.split ) # harvest requests
+	      $cmd "$@";
+	      ;;
+      declare ) # informational requests
+        _${cmd} "$@";
+        ;;
+	    *)
+	      exec pod2usage $0
+	  ;;
+    esac
+}
+
+
+function log() {
+  [[ -n ${G[verbose]} ]] && (>&2 echo LOG: $@)
+}
+
+function log_run() {
+  local OPTS=();
+  while true; do
+	  case $1 in
+	    -*) OPTS+=($1); shift ;;
+	    -- ) shift; break;;
+	    *) break;
+	  esac
+  done
+
+  local opts=`$GETOPT --long stdin:,stdout:,level:,run -n 'elements log_run' -- fake_cmd "${OPTS[@]}"`
+  if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+  eval set -- "$opts" "$@"
+
+  local stdin=
+  local stdout=
+  local run=
+  while true; do
+	  case $1 in
+      --level ) level=$2; shift 2;;
+      --stdin ) stdin=$2; shift 2;;
+      --stdout ) stdout=$2; shift 2;;
+      --run ) run=1; shift ;;
+	    -- ) shift; break;;
+	    *) shift; break;
+    esac
+  done
+
+  local LOG=LOG;
+  [[ -n $run ]] && LOG=RUN;
+
+  if [[ -n $stdout && -n $stdin ]]; then
+      [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin" ">$stdout")
+      [[ -n $run ]] && ($@ < $stdin > $stdout)
+  elif [[ -n $stdout && -z $stdin ]]; then
+    [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" ">$stdout")
+    [[ -n $run ]] && ("$@" > "$stdout")
+  elif [[ -n $stdin && -z $stdout ]]; then
+    [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin")
+    [[ -n $run ]] && ($@ < $stdin)
+  else
+    [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@")
+    [[ -n $run ]] && ($@)
+  fi
+}
+
+function err() {
+  local n=1;
+  if [[ $1 = '--quiet' ]] ; then
+    n=$2;
+  else
+    n=$1
+    shift
+    (>&2 echo err: $@)
+  fi
+  exit $n;
+}
+
+: <<='cut'
+=pod
+
+=head2 FETCH.SPLIT
+
+elements I<options> B<fetch.split> [--cats=I<columns>]
+
+B<elements fetch.split> splits a set of fetched files for a category into
+a individual files for each record.
+
+=head3 FETCTH.SPLIT OPTIONS
+
+=over 4
+
+=item B<--cats=I<cats>>
+
+Specify the catagories to split,
+
+=back
+
+=cut
+
+function fetch.split () {
+  local opts=`$GETOPT -o ic: --long items,cats: -n 'elements fetch.split' -- "$@"`
+  if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+  eval set -- "$opts"
+
+  local cats=()
+  local in_cats=()
+  local c
+  local t
+  local tmp=()
+  local items=
+
+  declare -A sel_id=(
+    [publications]='api:object/@id'
+    [users]='api:object/@id'
+    [relationships]='api:relationship/@id'
+    [groups]='api:user-group/@id'
+  );
+
+  while true; do
+	  case $1 in
+      -c | --cats ) in_cats+=($2); shift 2;;
+      -i | --items ) items=1; shift ;;
+	    -- ) shift; break;;
+	    *) shift; break;
+    esac
+  done
+
+  # Split each input category by ,
+  for c in "${in_cats[@]}"; do
+    IFS=', ' read -r -a tmp <<<$c
+    for t in "${tmp[@]}"; do
+      cats+=($t)
+    done
+  done
+
+  local sel="${G[util_xmlstarlet]} sel -N a=http://www.w3.org/2005/Atom"
+  local fdir=${G[base]}/feed
+  local raw=${G[base]}/raw-records
+
+  for c in "${cats[@]}"; do
+    local s=${c::-1}
+    [[ -d ${fdir}/$s ]] && rm -r ${fdir}/$s;
+    mkdir -p ${fdir}/$s;
+    for f in ${fdir}/*${c}.[0-9]*; do
+      log $f
+      if [[ -f $f ]]; then
+        for id in $(${sel} -t -v '/a:feed/a:entry/'${sel_id[$c]} $f); do
+          log_run --run --stdout=$fdir/$s/$id ${sel} -D -t -c '/a:feed/a:entry['${sel_id[$c]}"=${id}]" $f
+         done
+      fi
+    done
+    log_run --run ${G[util_rsync]} -r --delete $fdir/$s/ $raw/$s
+    log_run --run rm -r $fdir/$s
+  done
+}
+
+:<<=cut
+
+=head2 GROUP.SUB
+
+  elements group.sub <--feed_groups=I<groups>> <--children> <--parents> groups.xml
+
+  B<elements group.sub> command reads in a group feed, and sub-selects out the
+  groups associated with the passed C<--feed_groups> parameter.  Both C<--children> and C<--parents> can be included.  The hierarchi y is adjusted so the file is self-consistent.
+
+=head3 GROUP.SUB OPTIONS
+
+=over 4
+
+=item B<--feed_groups=I<groups>>
+
+Specify the groups to sub select config default is C<feed:groups:>.
+
+=item B<--parents>
+
+Include all parents of the passed group
+
+=item B<--children>
+
+Include all children of the passed group.
+
+=back
+
+=cut
+
+function group.sub() {
+  local opts=`$GETOPT -o o:g:pcf: --long output:,feed_groups:,parents,children,format: -n 'elements getParent' -- "$@"`
+  if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+  eval set -- "$opts"
+
+  local sel="${G[util_xmlstarlet]} sel -N a=http://www.w3.org/2005/Atom"
+  local ed="${G[util_xmlstarlet]} ed -O -N a=http://www.w3.org/2005/Atom"
+  local id=${G[feed_groups]};
+  local parents=;
+  local children=;
+  local format=feed;
+  local output=/dev/stdout
+  while true; do
+	  case $1 in
+      -o | --output ) output=$2; shift 2;;
+      -f | --format ) format=$2; shift 2;;
+      -g | --feed_groups ) id="$2"; shift 2;;
+      -p | --parents ) parents=1; shift;;
+      -c | --children ) children=1; shift;;
+	    -- ) shift; break;;
+	    *) shift; break;
+    esac
+  done
+
+  local file=$1;
+  local fmt;
+
+  if [[ -f $file ]]; then
+    if [[ $format ==  "feed" ]]; then
+      fmt=$(${ed} -d "//a:entry" ${file} | sed -e 's|</feed>||')
+    fi
+
+    log_run ${sel} -t -c '//a:entry[api:user-group/@id=${id}]' ${file}
+    if [[ $format == "ids" ]]; then
+      fmt="$fmt $(${sel} -t -v "/a:feed/a:entry/api:user-group[@id=${id}]/@id" ${file})"
+    else
+      fmt="$fmt $(${sel} -t -c "/a:feed/a:entry[api:user-group/@id=${id}]" ${file})"
+    fi
+
+    if [[ $parents ]] ; then
+      local cid=$id
+      local pid=$(${sel} -t -v "//a:entry/api:user-group[api:children/api:child/@id=${cid}]/@id" ${file})
+      while [[ -n $pid ]]; do
+        if [[ $format == "ids" ]]; then
+          fmt="$fmt ${pid}"
+        else
+          fmt="$fmt $(${sel} -t -c "//a:entry[api:user-group/@id=${pid}]" ${file} | ${ed} -d "//api:child[@id != ${cid}]")"
+        fi
+        cid=$pid;
+        pid=$(${sel} -t -v "//a:entry/api:user-group[api:children/api:child/@id=${pid}]/@id" ${file})
+      done
+    fi
+
+    if [[ $children ]] ; then
+      local pid=$id
+      local cid;
+      for cid in $(${sel} -t -v "//a:entry/api:user-group[@id=${pid}]/api:children/api:child/@id" ${file}); do
+        if [[ $format == "ids" ]]; then
+          log group.sub format=ids --children --feed_groups=$cid ${file}
+          fmt="$fmt $(group.sub --format=ids --children --feed_groups=$cid ${file})"
+        else
+          fmt="$fmt $(group.sub --format=xml --children --feed_groups=$cid ${file})"
+        fi
+      done
+    fi
+    if [[ $format == "feed" ]]; then
+      fmt="$fmt </feed>"
+      xmllint --format - <<<${fmt} > ${output}
+    else
+      echo ${fmt} > ${output}
+    fi
+  fi
+}
+
+
+:<<=cut
+
+=head2 LOGIN
+
+  elements login --auth=USER[:PASS]
+
+B<elements login> is a simple wrapper around the B<httpie --auth=USER:PASS> command.
+This allows users to setup their basic authorization, which is then stored in
+the standard httpie session paratmeters. It is possible to maintain multiple users,
+via the elements I<--session> parameter to maintain different users, eg.
+
+  elements --session=ucd --auth=ucd
+
+After which the session C<ucd>, will be set as a new httpie session, with
+the saved authorization.
+
+=head3 LOGIN OPTIONS
+
+=over 4
+
+=item B<-a|--auth=USER[:PASS]>
+
+You specify the basic authentication for the ezid.cdlib.org server. If you only
+specify the USER, then you are prompted for the password.
+
+=back
+
+=cut
+
+function login() {
+    local opts=`$GETOPT -o a --long auth: -n 'ezid login' -- "$@"`
+    if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+    eval set -- "$opts"
+
+    local auth=
+
+    while true; do
+	    case $1 in
+        -a | --auth ) auth=$2; shift 2;;
+	      -- ) shift; break;;
+	      *) shift; break;
+      esac
+    done
+   _http --auth=${auth} ${G[api]}
+}
+
+:<<=cut
+
+=head2 FEED
+
+  elements <global-elements> feed [--groups=<groups>] [-n|--no-run] cats cats
+
+B<elements feed> uses the ATOM feed api to retreive all categories from the
+elements database. The function saves each chunk of the category and follows the
+c<next> parameter until completed.  The files are saved to the C<feed> directory.
+
+possible categories are c<groups>,c<users>,c<publications>,c<relationships>
+
+=head3 GET OPTIONS
+
+=over 4
+
+=item B<-n|--no-run>
+
+Do not actually run the command.
+
+=back
+
+= Special Considerations
+
+The c<group> feed is handled in two stages. The elements API has no groups
+subselection for the system groups. This function creates a sub-graph of the
+feed based on the specified group. It does this by saving the elements groups to
+c<feed/groups.xml> and then creating a subgraph (using <group.sub> with all
+parents of the selected <graph> and all the children. This is saved to
+C<feeds/graph.000>
+
+The c<users> and c<publications> calls are made using explicit membership calls
+for the specified group, and the children. This is two build explicit membership
+of these categories.
+
+=cut
+
+function feed () {
+  local opts=`$GETOPT -o ng: --long no-run,groups:detail: -n 'elements get' -- "$@"`
+  if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+  eval set -- "$opts"
+
+  local run='--run'
+  local groups=${G[feed_groups]}
+  local detail=${G[feed_detail]}
+  while true; do
+	  case $1 in
+      -g | --groups ) groups=$1; shift 2;;
+      -n | --no-run ) run=; shift ;;
+	    -- ) shift; break;;
+	    *) shift; break;
+    esac
+  done
+
+  local http="http --check-status --session=${G[http_session]} --print=b ${G[api]}"
+  local cats;
+  local n;
+
+  local groups_xml=${G[base]}/feed/groups.xml
+  local groups_000=${G[base]}/feed/groups.000
+  local g
+
+  while [[ -n $1 ]]; do
+    let n=0;
+    case $1 in
+      groups )
+        log_run $run --stdout=${groups_xml} $http/groups
+        log_run $run --stdout=${groups_000} group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml}
+        shift;;
+      users | publications )
+        cats=$1;
+        [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
+        for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
+          next="${http}/${cats}?group-membership=explicit&groups=${g}&detail=full"
+          let n=0;
+          while [[ -n ${next} ]]; do
+            fn=feed/${cats}.${g}.${n};
+            log ${next}
+#            ${http} "${next}" | xmllint --format - > ${fn};
+            next=$(xmlstarlet sel -T -N a="http://www.w3.org/2005/Atom" -t -v '//api:page[@position="next"]/@href' ${fn});
+            let n+=1;
+          done
+          log_run $run $http/$func "$@"
+        done
+        shift;;
+      *)
+        err 1 $1 is not a valid category
+    esac
+  done
+
+}
+
+:<<=cut
+
+=head2 GET
+
+  elements get [-n|--noop] function [[parm==val1 parm2==val2]]
+
+B<elements get> is a simple wrapper around the B<httpie GET> command.
+This allows users to setup their basic authorization, which is then stored in
+the standard httpie session paratmeters. It is possible to maintain multiple users,
+via the elements I<--session> parameter to maintain different users, eg.
+
+  elements get users
+
+=head3 GET OPTIONS
+
+=over 4
+
+=item B<-n|--no-run>
+
+Do not actually run the command.
+
+=back
+
+=cut
+
+function get () {
+  local opts=`$GETOPT -o n --long no-run -n 'elements get' -- "$@"`
+  if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+  eval set -- "$opts"
+
+  local run='--run'
+  while true; do
+	  case $1 in
+      -n | --no-run ) run=; shift ;;
+	    -- ) shift; break;;
+	    *) shift; break;
+    esac
+  done
+
+  local http="http --check-status --session=${G[http_session]} --print=b ${G[api]}"
+  local func=$1;
+  shift
+
+  log_run $run $http/$func "$@"
+}
+
+
+function encode() {
+  # urlencode <string>
+  old_lc_collate=$LC_COLLATE
+  LC_COLLATE=C
+
+  local length="${#1}"
+  for (( i = 0; i < length; i++ )); do
+    local c="${1:i:1}"
+    case $c in
+      [%:$'\n'$'\r'] ) printf '%%%02X' "'$c" ;;
+      * ) printf "$c" ;;
+# THis is URL encoding
+#      [a-zA-Z0-9.~_-]) printf "$c" ;;   # This is URL encoding
+#      *) printf '%%%02X' "'$c" ;;
+esac
+done
+
+  LC_COLLATE=$old_lc_collate
+}
+
+function decode() {
+  # urldecode <string>
+
+  local url_encoded="${1//+/ }"
+  printf '%b' "${url_encoded//%/\\x}"
+}
+
+: <<='cut'
+=pod
+
+=head1 DEPENDANCIES
+
+Elements uses a number of external bash commands. These must be installed for
+the elements script to work. These commands include httpie, xmlstarlet, and
+
+=over 4
+
+=item L<httpie|https://httpie.org/>
+
+httpie is a command-line tool similar to B<curl>. Since we only really need the
+authentication, it may be better to use curl here and the .netrc file instead.
+It is nice to have the httpie interface however, for debugging.
+
+=item L<xmlstarlet|http://xmlstar.sourceforge.net/>
+
+xmlstarlet is a simplfied method to perform xslt transforms to XML documents on
+the command-line.  The syntax is more concise the the XSLT transforms.
+
+=item L<xmllint>
+
+xmllint is simply used to format the output from elements, and verify that it's
+okay. Since we are often looking at the intermediate files, it's nice to have
+them formatted.
+
+=item L<getopt>
+
+${FLAGS_GETOPT_CMD:-getopt}
+
+=back
+
+=head1 AUTHOR
+
+Quinn Hart <qjhart@ucdavis.edu>
+
+=cut
+
+
+#MAIN
+# global Variables
+declare -A G=(
+  [noop]=''
+  [http_ssl]="tls1.2"
+  [http_print]="b"
+  [http_session]="elements"
+  [base]="."
+  [util_rsync]="rsync"
+  [util_xmlstarlet]="xmlstarlet"
+  [feed_detail]="full"
+);
+
+OPTS=();
+while true; do
+	case $1 in
+	  -*) OPTS+=($1); shift ;;
+	  -- ) shift; break;;
+	  *) break;
+	esac
+done
+
+# Allow getopt to be somewhere else
+GETOPT=${FLAGS_GETOPT_CMD:-getopt}
+
+init $OPTS
+main.cmd "$@"
+
+exit 0;
