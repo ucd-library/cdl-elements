@@ -1,0 +1,218 @@
+=head1  NAME
+
+elements - Harvest an Elements feed.
+
+=head1 SYNOPSIS
+
+elements [--api=<elements_endpoint>] [-S|--session=<httpie session>] \
+         [-b|--base=<base>] [-n|--dry-run] [-p|--print] [-h|--help]\
+  <command> [<args>]
+
+  where <command> is one of harvest
+
+elements is a script the simplifies the retrieval of an elements feed API.
+L</"COMMANDS"> is summary of the commands that are available.
+
+=head1 GLOBAL OPTIONS
+
+=over 4
+
+=item B<--api=I<elements_endpoint>>
+
+This is the http address for the elements endpoint.
+
+=item B<-S|--session|--http_session=I<http_session>>
+
+Set the HTTPIE session variable. It is equivalent to the
+L<httpie|https://httpie.org/> session variable, and are shared in that command
+configuration. Sessions primarily keep the basic authentication parameters
+saved. By default the B<elements> session is used.
+
+=item B<-b|--base = directory>
+
+Specify the base directory for your feed results, default C<base=./>. Under this
+directory, we have temporary C<feed> directory holding the individual calls
+to the elements backend, and C<raw-records> which stores the XML files for the
+individual records. Under C<raw-records> are C<users>,C<relationships>, C<groups>
+
+
+=item B<-n|--dry-run>
+
+Show what you would do do not really do it. Because some commands require
+multiple access to the server, this command does not always work properly :(.
+
+=item B<-h|--help>
+
+Shows the manpage for the program. The help pages are embedded in the script and
+require the functions, C<pod2usage> and C<pod2text> to work properly.
+
+=back
+
+=pod
+
+=head1 COMMANDS
+
+Next there are a set of commands that communicate with the CDL service. Note,
+that ezid uses L<httpie|https://httpie.org/> for its http communcation. This
+allows users to combine ezid with other httpie requests if required. Login
+infomation is stored using the standard C<httpie> methodology, see L</"GLOBAL OPTIONS"> for httpid options.
+
+C<elements [options] harvest --full> Harvests a number of feeds from the
+Elements database and stores each record in a separate file.  This is to match how
+the Sympletic Harvester works
+
+=head2 FETCH.SPLIT
+
+elements I<options> B<fetch.split> [--cats=I<columns>]
+
+B<elements fetch.split> splits a set of fetched files for a category into
+a individual files for each record.
+
+=head3 FETCTH.SPLIT OPTIONS
+
+=over 4
+
+=item B<--cats=I<cats>>
+
+Specify the catagories to split,
+
+=back
+
+=head2 GROUP.SUB
+
+  elements group.sub <--feed_groups=I<groups>> <--children> <--parents> groups.xml
+
+  B<elements group.sub> command reads in a group feed, and sub-selects out the
+  groups associated with the passed C<--feed_groups> parameter.  Both C<--children> and C<--parents> can be included.  The hierarchi y is adjusted so the file is self-consistent.
+
+=head3 GROUP.SUB OPTIONS
+
+=over 4
+
+=item B<--feed_groups=I<groups>>
+
+Specify the groups to sub select config default is C<feed:groups:>.
+
+=item B<--parents>
+
+Include all parents of the passed group
+
+=item B<--children>
+
+Include all children of the passed group.
+
+=back
+
+=head2 LOGIN
+
+  elements login --auth=USER[:PASS]
+
+B<elements login> is a simple wrapper around the B<httpie --auth=USER:PASS> command.
+This allows users to setup their basic authorization, which is then stored in
+the standard httpie session paratmeters. It is possible to maintain multiple users,
+via the elements I<--session> parameter to maintain different users, eg.
+
+  elements --session=ucd --auth=ucd
+
+After which the session C<ucd>, will be set as a new httpie session, with
+the saved authorization.
+
+=head3 LOGIN OPTIONS
+
+=over 4
+
+=item B<-a|--auth=USER[:PASS]>
+
+You specify the basic authentication for the ezid.cdlib.org server. If you only
+specify the USER, then you are prompted for the password.
+
+=back
+
+=head2 FEED
+
+  elements <global-elements> feed [--groups=<groups>] [-n|--no-run] cats cats
+
+B<elements feed> uses the ATOM feed api to retreive all categories from the
+elements database. The function saves each chunk of the category and follows the
+c<next> parameter until completed.  The files are saved to the C<feed> directory.
+
+possible categories are c<groups>,c<users>,c<publications>,c<relationships>
+
+=head3 GET OPTIONS
+
+=over 4
+
+=item B<-n|--no-run>
+
+Do not actually run the command.
+
+=back
+
+= Special Considerations
+
+The c<group> feed is handled in two stages. The elements API has no groups
+subselection for the system groups. This function creates a sub-graph of the
+feed based on the specified group. It does this by saving the elements groups to
+c<feed/groups.xml> and then creating a subgraph (using <group.sub> with all
+parents of the selected <graph> and all the children. This is saved to
+C<feeds/graph.000>
+
+The c<users> and c<publications> calls are made using explicit membership calls
+for the specified group, and the children. This is two build explicit membership
+of these categories.
+
+=head2 GET
+
+  elements get [-n|--noop] function [[parm==val1 parm2==val2]]
+
+B<elements get> is a simple wrapper around the B<httpie GET> command.
+This allows users to setup their basic authorization, which is then stored in
+the standard httpie session paratmeters. It is possible to maintain multiple users,
+via the elements I<--session> parameter to maintain different users, eg.
+
+  elements get users
+
+=head3 GET OPTIONS
+
+=over 4
+
+=item B<-n|--no-run>
+
+Do not actually run the command.
+
+=back
+
+=head1 DEPENDANCIES
+
+Elements uses a number of external bash commands. These must be installed for
+the elements script to work. These commands include httpie, xmlstarlet, and
+
+=over 4
+
+=item L<httpie|https://httpie.org/>
+
+httpie is a command-line tool similar to B<curl>. Since we only really need the
+authentication, it may be better to use curl here and the .netrc file instead.
+It is nice to have the httpie interface however, for debugging.
+
+=item L<xmlstarlet|http://xmlstar.sourceforge.net/>
+
+xmlstarlet is a simplfied method to perform xslt transforms to XML documents on
+the command-line.  The syntax is more concise the the XSLT transforms.
+
+=item L<xmllint>
+
+xmllint is simply used to format the output from elements, and verify that it's
+okay. Since we are often looking at the intermediate files, it's nice to have
+them formatted.
+
+=item L<getopt>
+
+${FLAGS_GETOPT_CMD:-getopt}
+
+=back
+
+=head1 AUTHOR
+
+Quinn Hart <qjhart@ucdavis.edu>
+
