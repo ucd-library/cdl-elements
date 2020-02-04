@@ -93,7 +93,7 @@ function init() {
     done
 
     # Read the configuration file
-    config=${G[base]}/config.yml
+    config=${G[base]}/elements.yml
     if [[ -f $config ]]; then
       eval $(_parse_yaml "$config")
     fi
@@ -213,11 +213,11 @@ function err() {
 : <<='cut'
 =pod
 
-=head2 FETCH.SPLIT
+=head2 FEED.SPLIT
 
-elements I<options> B<fetch.split> [--cats=I<columns>]
+elements I<options> B<feed.split> [--cats=I<columns>]
 
-B<elements fetch.split> splits a set of fetched files for a category into
+B<elements feed.split> splits a set of feeded files for a category into
 a individual files for each record.
 
 =head3 FETCTH.SPLIT OPTIONS
@@ -232,8 +232,8 @@ Specify the catagories to split,
 
 =cut
 
-function fetch.split () {
-  local opts=`$GETOPT -o ic: --long items,cats: -n 'elements fetch.split' -- "$@"`
+function feed.split () {
+  local opts=`$GETOPT -o i --long items -n 'elements feed.split' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
@@ -243,7 +243,6 @@ function fetch.split () {
   local c
   local t
   local tmp=()
-  local items=
 
   declare -A sel_id=(
     [publications]='api:object/@id'
@@ -254,34 +253,31 @@ function fetch.split () {
 
   while true; do
 	  case $1 in
-      -c | --cats ) in_cats+=($2); shift 2;;
-      -i | --items ) items=1; shift ;;
 	    -- ) shift; break;;
 	    *) shift; break;
     esac
   done
 
-  # Split each input category by ,
-  for c in "${in_cats[@]}"; do
-    IFS=', ' read -r -a tmp <<<$c
-    for t in "${tmp[@]}"; do
-      cats+=($t)
-    done
-  done
-
   local sel="${G[util_xmlstarlet]} sel -N a=http://www.w3.org/2005/Atom"
+  local ed="${G[util_xmlstarlet]} ed -N a=http://www.w3.org/2005/Atom"
   local fdir=${G[base]}/feed
   local raw=${G[base]}/raw-records
 
-  for c in "${cats[@]}"; do
+  for c in "$@"; do
+    [[ -z ${sel_id[$c]} ]] && err 1 $c not a valid category
+  done
+
+  for c in "$@"; do
     local s=${c::-1}
     [[ -d ${fdir}/$s ]] && rm -r ${fdir}/$s;
     mkdir -p ${fdir}/$s;
-    for f in ${fdir}/*${c}.[0-9]*; do
+    for f in ${fdir}/${c}.[0-9]*; do
       log $f
       if [[ -f $f ]]; then
         for id in $(${sel} -t -v '/a:feed/a:entry/'${sel_id[$c]} $f); do
-          log_run --run --stdout=$fdir/$s/$id ${sel} -D -t -c '/a:feed/a:entry['${sel_id[$c]}"=${id}]" $f
+          log "${sel} -D -t -c '/a:feed/a:entry['${sel_id[$c]}\"=${id}]\" $f | $ed -d '/a > $fdir/$s/$id"
+          ${sel} -D -t -c '/a:feed/a:entry['${sel_id[$c]}"=${id}]" $f |\
+            ${ed} -d '/a:entry/a:*' > $fdir/$s/$id
          done
       fi
     done
@@ -352,10 +348,11 @@ function group.sub() {
       fmt=$(${ed} -d "//a:entry" ${file} | sed -e 's|</feed>||')
     fi
 
-    log_run ${sel} -t -c '//a:entry[api:user-group/@id=${id}]' ${file}
     if [[ $format == "ids" ]]; then
+      log_run ${sel} -t -v '//a:entry[api:user-group/[@id=${id}]/@id' ${file}
       fmt="$fmt $(${sel} -t -v "/a:feed/a:entry/api:user-group[@id=${id}]/@id" ${file})"
     else
+      log_run ${sel} -t -c '//a:entry[api:user-group/@id=${id}]' ${file}
       fmt="$fmt $(${sel} -t -c "/a:feed/a:entry[api:user-group/@id=${id}]" ${file})"
     fi
 
@@ -366,6 +363,7 @@ function group.sub() {
         if [[ $format == "ids" ]]; then
           fmt="$fmt ${pid}"
         else
+          log ${sel} -t -c "//a:entry[api:user-group/@id=${pid}]" ${file} | ${ed} -d "//api:child[@id != ${cid}]"
           fmt="$fmt $(${sel} -t -c "//a:entry[api:user-group/@id=${pid}]" ${file} | ${ed} -d "//api:child[@id != ${cid}]")"
         fi
         cid=$pid;
@@ -378,7 +376,6 @@ function group.sub() {
       local cid;
       for cid in $(${sel} -t -v "//a:entry/api:user-group[@id=${pid}]/api:children/api:child/@id" ${file}); do
         if [[ $format == "ids" ]]; then
-          log group.sub format=ids --children --feed_groups=$cid ${file}
           fmt="$fmt $(group.sub --format=ids --children --feed_groups=$cid ${file})"
         else
           fmt="$fmt $(group.sub --format=xml --children --feed_groups=$cid ${file})"
@@ -386,11 +383,9 @@ function group.sub() {
       done
     fi
     if [[ $format == "feed" ]]; then
-      fmt="$fmt </feed>"
-      xmllint --format - <<<${fmt} > ${output}
-    else
-      echo ${fmt} > ${output}
+      fmt+="</feed>"
     fi
+    echo ${fmt} > ${output}
   fi
 }
 
@@ -490,42 +485,80 @@ function feed () {
   local detail=${G[feed_detail]}
   while true; do
 	  case $1 in
-      -g | --groups ) groups=$1; shift 2;;
+      -g | --groups ) groups=$2; shift 2;;
+      -d | --detail ) detail=$2; shift 2;;
       -n | --no-run ) run=; shift ;;
 	    -- ) shift; break;;
 	    *) shift; break;
     esac
   done
 
-  local http="http --check-status --session=${G[http_session]} --print=b ${G[api]}"
+  local http="${G[util_http]} --check-status --session=${G[http_session]} --print=b "
   local cats;
-  local n;
+  local g n N uf;
+  local fdir=${G[base]}/feed
+  local groups_xml=$fdir/groups.xml
+  local groups_000=$fdir/groups.000
 
-  local groups_xml=${G[base]}/feed/groups.xml
-  local groups_000=${G[base]}/feed/groups.000
-  local g
+  local selT="${G[util_xmlstarlet]} sel -T -N a=http://www.w3.org/2005/Atom"
 
   while [[ -n $1 ]]; do
     let n=0;
     case $1 in
       groups )
-        log_run $run --stdout=${groups_xml} $http/groups
+        log_run $run --stdout=${groups_xml} $G[api]}/groups
         log_run $run --stdout=${groups_000} group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml}
         shift;;
       users | publications )
         cats=$1;
         [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
+        log_run group.sub --format=ids --children --feed_groups=${groups} ${groups_000}
         for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
-          next="${http}/${cats}?group-membership=explicit&groups=${g}&detail=full"
+          next="${G[api]}/${cats}?group-membership=explicit&groups=${g}&detail=$detail"
           let n=0;
           while [[ -n ${next} ]]; do
-            fn=feed/${cats}.${g}.${n};
-            log ${next}
-#            ${http} "${next}" | xmllint --format - > ${fn};
-            next=$(xmlstarlet sel -T -N a="http://www.w3.org/2005/Atom" -t -v '//api:page[@position="next"]/@href' ${fn});
+            printf -v N "%03d" $n
+            fn=${fdir}/${cats}.${g}.${N};
+            log "${http} '${next}' > ${fn}"
+            ${http} "${next}" > ${fn};
+            log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
+            next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn});
             let n+=1;
           done
-          log_run $run $http/$func "$@"
+        done
+        shift;;
+      # Relationships are different, because we need to get those on a per-user level,
+      # not via groups.
+      user-relationships )
+        cats=$1;
+        for uf in $fdir/users.; do
+          for id in $($selT -t -v '/a:feed/a:entry/api:object/@id' $uf); do
+            next="${G[api]}/relationships?involving=user($id)&detail=ref"
+            log $uf $id $next
+            let n=0;
+            while [[ -n ${next} ]]; do
+              printf -v N "%03d" $n
+              fn=${fdir}/user-relationships.${id}.${N};
+              log "${http} '${next}' > ${fn}"
+              ${http} "${next}" > ${fn};
+              # Now get relationships with both directions
+#              ids=$($selT -t -v /a:feed/a:entry/api:relationship/@id ${fn} | paste -sd ',' )
+#              log ${http} "${G[api]}/relationships?ids=${ids}&detail=ref"
+              log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
+              next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn});
+              let n+=1;
+            done
+          done
+        done
+        shift;;
+      relationships)
+        for fn in $fdir/user-relationships.*; do
+          local tfn=$(echo $fn | sed -e 's/user-relationships/relationships/')
+          ids=$($selT -t -v /a:feed/a:entry/api:relationship/@id ${fn} | paste -sd ',' )
+          if [[ -n $ids ]] ; then
+            log ${http} "${G[api]}/relationships?ids=${ids}&detail=ref" '>' ${tfn}
+#            ${http} "${G[api]}/relationships?ids=${ids}&detail=ref" > ${tfn}
+          fi
         done
         shift;;
       *)
@@ -660,6 +693,7 @@ declare -A G=(
   [base]="."
   [util_rsync]="rsync"
   [util_xmlstarlet]="xmlstarlet"
+  [util_http]="http"
   [feed_detail]="full"
 );
 
