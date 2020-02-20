@@ -61,11 +61,11 @@ C<elements [options] harvest --full> Harvests a number of feeds from the
 Elements database and stores each record in a separate file.  This is to match how
 the Sympletic Harvester works
 
-=head2 FETCH.SPLIT
+=head2 FEED.SPLIT
 
-elements I<options> B<fetch.split> [--cats=I<columns>]
+elements I<options> B<feed.split> [--cats=I<columns>]
 
-B<elements fetch.split> splits a set of fetched files for a category into
+B<elements feed.split> splits a set of feeded files for a category into
 a individual files for each record.
 
 =head3 FETCTH.SPLIT OPTIONS
