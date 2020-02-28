@@ -151,52 +151,53 @@ function log() {
   [[ -n ${G[verbose]} ]] && (>&2 echo LOG: $@)
 }
 
-function log_run() {
-  local OPTS=();
-  while true; do
-	  case $1 in
-	    -*) OPTS+=($1); shift ;;
-	    -- ) shift; break;;
-	    *) break;
-	  esac
-  done
+# # log_run was an idea, but I decided it was too complicated to use with pipes (as I at least tried below)
+# function log_run() {
+#   local OPTS=();
+#   while true; do
+# 	  case $1 in
+# 	    -*) OPTS+=($1); shift ;;
+# 	    -- ) shift; break;;
+# 	    *) break;
+# 	  esac
+#   done
 
-  local opts=`$GETOPT --long stdin:,stdout:,level:,run -n 'elements log_run' -- fake_cmd "${OPTS[@]}"`
-  if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
+#   local opts=`$GETOPT --long stdin:,stdout:,level:,run -n 'elements log_run' -- fake_cmd "${OPTS[@]}"`
+#   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
-  eval set -- "$opts" "$@"
+#   eval set -- "$opts" "$@"
 
-  local stdin=
-  local stdout=
-  local run=
-  while true; do
-	  case $1 in
-      --level ) level=$2; shift 2;;
-      --stdin ) stdin=$2; shift 2;;
-      --stdout ) stdout=$2; shift 2;;
-      --run ) run=1; shift ;;
-	    -- ) shift; break;;
-	    *) shift; break;
-    esac
-  done
+#   local stdin=
+#   local stdout=
+#   local run=
+#   while true; do
+# 	  case $1 in
+#       --level ) level=$2; shift 2;;
+#       --stdin ) stdin=$2; shift 2;;
+#       --stdout ) stdout=$2; shift 2;;
+#       --run ) run=1; shift ;;
+# 	    -- ) shift; break;;
+# 	    *) shift; break;
+#     esac
+#   done
 
-  local LOG=LOG;
-  [[ -n $run ]] && LOG=RUN;
+#   local LOG=LOG;
+#   [[ -n $run ]] && LOG=RUN;
 
-  if [[ -n $stdout && -n $stdin ]]; then
-      [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin" ">$stdout")
-      [[ -n $run ]] && ($@ < $stdin > $stdout)
-  elif [[ -n $stdout && -z $stdin ]]; then
-    [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" ">$stdout")
-    [[ -n $run ]] && ("$@" > "$stdout")
-  elif [[ -n $stdin && -z $stdout ]]; then
-    [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin")
-    [[ -n $run ]] && ($@ < $stdin)
-  else
-    [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@")
-    [[ -n $run ]] && ($@)
-  fi
-}
+#   if [[ -n $stdout && -n $stdin ]]; then
+#       [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin" ">$stdout")
+#       [[ -n $run ]] && ($@ < $stdin > $stdout)
+#   elif [[ -n $stdout && -z $stdin ]]; then
+#     [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" ">$stdout")
+#     [[ -n $run ]] && ("$@" > "$stdout")
+#   elif [[ -n $stdin && -z $stdout ]]; then
+#     [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin")
+#     [[ -n $run ]] && ($@ < $stdin)
+#   else
+#     [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@")
+#     [[ -n $run ]] && ($@)
+#   fi
+# }
 
 function err() {
   local n=1;
@@ -281,8 +282,10 @@ function feed.split () {
          done
       fi
     done
-    log_run --run ${G[util_rsync]} -r --delete $fdir/$s/ $raw/$s
-    log_run --run rm -r $fdir/$s
+    log ${G[util_rsync]} -r --delete $fdir/$s/ $raw/$s
+    ${G[util_rsync]} -r --delete $fdir/$s/ $raw/$s
+    log rm -r $fdir/$s
+    rm -r $fdir/$s
   done
 }
 
@@ -300,7 +303,7 @@ function feed.split () {
 
 =item B<--feed_groups=I<groups>>
 
-Specify the groups to sub select config default is C<feed:groups:>.
+Specify the groups to sub select config default is C<feed:groups:>.  Inidividual groups can be comma seprated, or you can add multiple C<--feed_groups=> entries.
 
 =item B<--parents>
 
@@ -322,7 +325,8 @@ function group.sub() {
 
   local sel="${G[util_xmlstarlet]} sel -N a=http://www.w3.org/2005/Atom"
   local ed="${G[util_xmlstarlet]} ed -O -N a=http://www.w3.org/2005/Atom"
-  local id=${G[feed_groups]};
+  local feed_groups=();
+  local ids=();
   local parents=;
   local children=;
   local format=feed;
@@ -331,9 +335,9 @@ function group.sub() {
 	  case $1 in
       -o | --output ) output=$2; shift 2;;
       -f | --format ) format=$2; shift 2;;
-      -g | --feed_groups ) id="$2"; shift 2;;
-      -p | --parents ) parents=1; shift;;
-      -c | --children ) children=1; shift;;
+      -g | --feed_groups ) feed_groups+=("$2"); shift 2;;
+      -p | --parents ) parents='--parents'; shift;;
+      -c | --children ) children='--children'; shift;;
 	    -- ) shift; break;;
 	    *) shift; break;
     esac
@@ -342,16 +346,67 @@ function group.sub() {
   local file=$1;
   local fmt;
 
-  if [[ -f $file ]]; then
-    if [[ $format ==  "feed" ]]; then
-      fmt=$(${ed} -d "//a:entry" ${file} | sed -e 's|</feed>||')
-    fi
+  # Convert --feed_groups to id list.
+  if [[ ${#feed_groups[@]} == 0 ]]; then
+    feed_groups=(${G[feed_groups]})
+  fi
+  for i in ${feed_groups[@]}; do
+    local add_groups=();
+    IFS=',' read -ra add_groups <<<"$i"
+    ids+=("${add_groups[@]}")
+  done
+  local id_list=$(printf ",%s" "${ids[@]}" | sed -e 's/^,//')
 
+  # We want to get a list all the ids needed
+
+  fmt="$fmt $(${sel} -t -v "/a:feed/a:entry/api:user-group[@id=${id}]/@id" ${file})"
+
+  if [[ $parents ]] ; then
+    local cid=$id
+    local pid=$(${sel} -t -v "//a:entry/api:user-group[api:children/api:child/@id=${cid}]/@id" ${file})
+    while [[ -n $pid ]]; do
+      if [[ $format == "ids" ]]; then
+        fmt="$fmt ${pid}"
+        cid=$pid;
+        pid=$(${sel} -t -v "//a:entry/api:user-group[api:children/api:child/@id=${pid}]/@id" ${file})
+    done
+  fi
+
+  // recursively call this for children
+  if [[ $children ]] ; then
+    local pid=$id
+    local cid;
+    for cid in $(${sel} -t -v "//a:entry/api:user-group[@id=${pid}]/api:children/api:child/@id" ${file}); do
+      fmt="$fmt $(group.sub --format=ids --children --feed_groups=$cid ${file})"
+    done
+  fi
+
+
+    log group.sub --format=ids $parents $children --feed_groups=${id_list} $file
+    id_list=$(group.sub --format=ids $parents $children --feed_groups=${id_list} $file | tr ' ' '\n' | sort -u )
+    ids=($id_list)
+    log "ids=${ids[@]}"
+  fi
+
+  log "id_list=${id_list}"
+
+  if [[ -z $file ]]; then
+    echo
+    err 1 "No file specified"
+  fi
+
+  # Copy original feed data if exists.
+  if [[ $format ==  "feed" ]]; then
+    fmt=$(${ed} -d "//a:entry" ${file} | sed -e 's|</feed>||')
+  fi
+
+  local id
+  for id in "${ids[@]}"; do
     if [[ $format == "ids" ]]; then
-      log_run ${sel} -t -v '//a:entry[api:user-group/[@id=${id}]/@id' ${file}
+      log ${sel} -t -v "//a:entry[api:user-group/[@id=${id}]/@id" ${file}
       fmt="$fmt $(${sel} -t -v "/a:feed/a:entry/api:user-group[@id=${id}]/@id" ${file})"
     else
-      log_run ${sel} -t -c '//a:entry[api:user-group/@id=${id}]' ${file}
+      log ${sel} -t -c '//a:entry[api:user-group/@id=${id}]' ${file}
       fmt="$fmt $(${sel} -t -c "/a:feed/a:entry[api:user-group/@id=${id}]" ${file})"
     fi
 
@@ -381,11 +436,11 @@ function group.sub() {
         fi
       done
     fi
-    if [[ $format == "feed" ]]; then
-      fmt+="</feed>"
-    fi
-    echo ${fmt} > ${output}
+  done
+  if [[ $format == "feed" ]]; then
+    fmt+="</feed>"
   fi
+  echo ${fmt} > ${output}
 }
 
 
@@ -538,7 +593,7 @@ function feed () {
           let n=0;
           while [[ -n ${next} ]]; do
             printf -v N "%03d" $n
-            fn=${fdir}/${cats}.xxx.${N};
+            fn=${fdir}/${cats}.000.${N};
             log "${http} '${next}' > ${fn}"
             ${http} "${next}" > ${fn};
             log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
@@ -619,10 +674,10 @@ function get () {
 
   eval set -- "$opts"
 
-  local run='--run'
+  local no_run=''
   while true; do
 	  case $1 in
-      -n | --no-run ) run=; shift ;;
+      -n | --no-run ) no_run=1; shift ;;
 	    -- ) shift; break;;
 	    *) shift; break;
     esac
@@ -632,7 +687,10 @@ function get () {
   local func=$1;
   shift
 
-  log_run $run $http/$func "$@"
+  log $http/$func "$@"
+  if [[ -z $no_run ]]; then
+    $http/$func "$@"
+  fi
 }
 
 
