@@ -291,7 +291,6 @@ function feed.split () {
 =head2 GROUP.SUB
 
   elements group.sub <--feed_groups=I<groups>> <--children> <--parents> groups.xml
-
   B<elements group.sub> command reads in a group feed, and sub-selects out the
   groups associated with the passed C<--feed_groups> parameter.  Both C<--children> and C<--parents> can be included.  The hierarchi y is adjusted so the file is self-consistent.
 
@@ -475,17 +474,19 @@ of these categories.
 =cut
 
 function feed () {
-  local opts=`$GETOPT -o ng: --long no-run,groups:detail: -n 'elements get' -- "$@"`
+  local opts=`$GETOPT -o ng:u: --long no-run,groups:,detail:,users: -n 'elements feed' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
 
   local run='--run'
+  local users=${G[feed_users]}
   local groups=${G[feed_groups]}
   local detail=${G[feed_detail]}
   while true; do
 	  case $1 in
       -g | --groups ) groups=$2; shift 2;;
+      -u | --users ) ids=$2; shift 2;;
       -d | --detail ) detail=$2; shift 2;;
       -n | --no-run ) run=; shift ;;
 	    -- ) shift; break;;
@@ -506,26 +507,45 @@ function feed () {
     let n=0;
     case $1 in
       groups )
-        log_run $run --stdout=${groups_xml} $G[api]}/groups
-        log_run $run --stdout=${groups_000} group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml}
+        if [[ ${run} ]]; then
+          ${http} ${G[api]}/groups > ${groups_xml}
+          group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} > ${groups_000}
+        fi
+        log ${http} ${G[api]}/groups ">" ${groups_xml}
+        log group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} ">" ${groups_000}
         shift;;
       users | publications )
         cats=$1;
-        [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
-        log_run group.sub --format=ids --children --feed_groups=${groups} ${groups_000}
-        for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
-          next="${G[api]}/${cats}?group-membership=explicit&groups=${g}&detail=$detail"
+        if [[ ${groups} ]] ; then
+          [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
+          log group.sub --format=ids --children --feed_groups=${groups} ${groups_000}
+          for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
+            next="${G[api]}/${cats}?group-membership=explicit&groups=${g}&detail=$detail"
+            let n=0;
+            while [[ -n ${next} ]]; do
+              printf -v N "%03d" $n
+              fn=${fdir}/${cats}.${g}.${N};
+              log "${http} '${next}' > ${fn}"
+              ${http} "${next}" > ${fn};
+              log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
+              next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn});
+              let n+=1;
+            done
+          done
+        fi;
+        if [[ ${cats}=='users' && ${users} ]]; then
+          next="${G[api]}/${cats}?ids=${users}&detail=$detail"
           let n=0;
           while [[ -n ${next} ]]; do
             printf -v N "%03d" $n
-            fn=${fdir}/${cats}.${g}.${N};
+            fn=${fdir}/${cats}.xxx.${N};
             log "${http} '${next}' > ${fn}"
             ${http} "${next}" > ${fn};
             log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
             next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn});
             let n+=1;
           done
-        done
+        fi
         shift;;
       # Relationships are different, because we need to get those on a per-user level,
       # not via groups.
