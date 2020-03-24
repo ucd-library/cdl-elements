@@ -359,7 +359,7 @@ function group.sub() {
 
   # We want to get a list all the ids needed
 
-  fmt="$fmt $(${sel} -t -v "/a:feed/a:entry/api:user-group[@id=${id}]/@id" ${file})"
+   fmt="$fmt $(${sel} -t -v "/a:feed/a:entry/api:user-group[@id=${id}]/@id" ${file})"
 
   if [[ $parents ]] ; then
     local cid=$id
@@ -369,6 +369,7 @@ function group.sub() {
         fmt="$fmt ${pid}"
         cid=$pid;
         pid=$(${sel} -t -v "//a:entry/api:user-group[api:children/api:child/@id=${pid}]/@id" ${file})
+        fi
     done
   fi
 
@@ -381,12 +382,11 @@ function group.sub() {
     done
   fi
 
-
-    log group.sub --format=ids $parents $children --feed_groups=${id_list} $file
-    id_list=$(group.sub --format=ids $parents $children --feed_groups=${id_list} $file | tr ' ' '\n' | sort -u )
-    ids=($id_list)
-    log "ids=${ids[@]}"
-  fi
+#    log group.sub --format=ids $parents $children --feed_groups=${id_list} $file
+#    id_list=$(group.sub --format=ids $parents $children --feed_groups=${id_list} $file | tr ' ' '\n' | sort -u )
+#    ids=($id_list)
+#    log "ids=${ids[@]}"
+#  fi
 
   log "id_list=${id_list}"
 
