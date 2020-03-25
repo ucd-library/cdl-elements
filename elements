@@ -409,7 +409,7 @@ function group.sub() {
     fi
   done
   # Now make sure we only count them once
-  idstr=$(echo $idstr | tr ' ' $'\n' | sort -b -n -u | tr  $'\n' ' ')
+  idstr=$(echo $idstr | tr ' ' $'\n' | sort -b -n -u | paste -sd' ')
 
   local fmt;
   # Copy original feed data if exists.
@@ -557,17 +557,16 @@ function feed () {
         log group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} ">" ${groups_000}
         group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} > ${groups_000}
         shift;;
-      users | publications )
-        cats=$1;
+      users )
         if [[ ${groups} ]] ; then
           [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
           log group.sub --format=ids --children --feed_groups=${groups} ${groups_000}
           for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
-            next="${G[api]}/${cats}?group-membership=explicit&groups=${g}&detail=$detail"
+            next="${G[api]}/users?group-membership=explicit&groups=${g}&detail=$detail"
             let n=0;
             while [[ -n ${next} ]]; do
               printf -v N "%03d" $n
-              fn=${fdir}/${cats}.${g}.${N};
+              fn=${fdir}/users.${g}.${N};
               log "${http} '${next}' > ${fn}"
               ${http} "${next}" > ${fn};
               log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
@@ -576,12 +575,12 @@ function feed () {
             done
           done
         fi;
-        if [[ ${cats}=='users' && ${users} ]]; then
-          next="${G[api]}/${cats}?ids=${users}&detail=$detail"
+        if [[ ${users} ]]; then
+          next="${G[api]}/users?ids=${users}&detail=$detail"
           let n=0;
           while [[ -n ${next} ]]; do
             printf -v N "%03d" $n
-            fn=${fdir}/${cats}.000.${N};
+            fn=${fdir}/users.000.${N};
             log "${http} '${next}' > ${fn}"
             ${http} "${next}" > ${fn};
             log next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn})
@@ -612,6 +611,17 @@ function feed () {
               let n+=1;
             done
           done
+        done
+        shift;;
+      publications )
+        for fn in $fdir/user-relationships.*; do
+          local tfn=$(echo $fn | sed -e 's/user-relationships/publications/')
+          log "$selT -t -v \"/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id ${fn}\" | paste -sd ','"
+          ids=$($selT -t -v "/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id" ${fn} | paste -sd ',' )
+          if [[ -n $ids ]] ; then
+            log ${http} "${G[api]}/relationships?ids=${ids}&detail=full" '>' ${tfn}
+            ${http} "${G[api]}/relationships?ids=${ids}&detail=full" > ${tfn}
+          fi
         done
         shift;;
       relationships)
