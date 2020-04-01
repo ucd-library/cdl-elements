@@ -275,6 +275,7 @@ function feed.split () {
     for f in ${fdir}/${c}.[0-9]*; do
       log $f
       if [[ -f $f ]]; then
+	log ${sel} -t -v '/a:feed/a:entry/'${sel_id[$c]} $f
         for id in $(${sel} -t -v '/a:feed/a:entry/'${sel_id[$c]} $f); do
           log "${sel} -D -t -c '/a:feed/a:entry['${sel_id[$c]}\"=${id}]\" $f | $ed -d '/a > $fdir/$s/$id"
           ${sel} -D -t -c '/a:feed/a:entry['${sel_id[$c]}"=${id}]" $f |\
@@ -619,8 +620,8 @@ function feed () {
           log "$selT -t -v \"/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id ${fn}\" | paste -sd ','"
           ids=$($selT -t -v "/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id" ${fn} | paste -sd ',' )
           if [[ -n $ids ]] ; then
-            log ${http} "${G[api]}/relationships?ids=${ids}&detail=full" '>' ${tfn}
-            ${http} "${G[api]}/relationships?ids=${ids}&detail=full" > ${tfn}
+            log ${http} "${G[api]}/publications?ids=${ids}&detail=full" '>' ${tfn}
+            ${http} "${G[api]}/publications?ids=${ids}&detail=full" > ${tfn}
           fi
         done
         shift;;
