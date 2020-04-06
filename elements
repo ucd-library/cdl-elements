@@ -473,7 +473,8 @@ function login() {
 	      *) shift; break;
       esac
     done
-   _http --auth=${auth} ${G[api]}
+    local http="${G[util_http]} --check-status --session=${G[http_session]} --print=hH"
+    $http --auth=${auth} ${G[api]}/groups
 }
 
 :<<=cut
@@ -540,7 +541,7 @@ function feed () {
     esac
   done
 
-  local http="${G[util_http]} --check-status --session=${G[http_session]} --print=b "
+  local http="${G[util_http]} --check-status --session-read-only=${G[http_session]} --print=b "
   local cats;
   local g n N uf;
   local fdir=${G[base]}/feed
@@ -554,7 +555,7 @@ function feed () {
     case $1 in
       groups )
         log ${http} ${G[api]}/groups ">" ${groups_xml}
-#        ${http} ${G[api]}/groups > ${groups_xml}
+        ${http} ${G[api]}/groups > ${groups_xml}
         log group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} ">" ${groups_000}
         group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} > ${groups_000}
         shift;;
