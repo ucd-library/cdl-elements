@@ -521,7 +521,7 @@ build explicit membership of these categories.
 =cut
 
 function feed () {
-  local opts=`$GETOPT -o g:u: --long groups:,detail:,users: -n 'elements feed' -- "$@"`
+  local opts=`$GETOPT -o g:u: --long groups:,detail:,users:,user-groups -n 'elements feed' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
@@ -530,12 +530,13 @@ function feed () {
   local users=${G[feed_users]}
   local groups=${G[feed_groups]}
   local detail=${G[feed_detail]}
+  local user_groups=''
   while true; do
 	  case $1 in
       -g | --groups ) groups=$2; shift 2;;
       -u | --users ) ids=$2; shift 2;;
       -d | --detail ) detail=$2; shift 2;;
-      -n | --no-run ) run=; shift ;;
+      -n | --user-groups ) user_groups=1; shift ;;
 	    -- ) shift; break;;
 	    *) shift; break;
     esac
@@ -556,11 +557,11 @@ function feed () {
       groups )
         log ${http} ${G[api]}/groups ">" ${groups_xml}
         ${http} ${G[api]}/groups > ${groups_xml}
-        log group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} ">" ${groups_000}
-        group.sub --format=feed --feed_groups=${groups} --parents --children ${groups_xml} > ${groups_000}
+        log group.sub --format=feed --feed_groups=${groups} --parents ${groups_xml} ">" ${groups_000}
+        group.sub --format=feed --feed_groups=${groups} --parents ${groups_xml} > ${groups_000}
         shift;;
       users )
-        if [[ ${groups} ]] ; then
+        if [[ -n ${groups} && -n ${user_groups} ]] ; then
           [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
           log group.sub --format=ids --children --feed_groups=${groups} ${groups_000}
           for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
