@@ -1,0 +1,73 @@
+INSERT DATA {
+GRAPH <http://vitro.mannlib.cornell.edu/default/vitro-kb-2> {
+<http://experts.library.ucdavis.edu/individual/jamlewis> <http://vivoweb.org/ontology/core#freetextKeyword> "Biomaterials-based vaccines" .
+<http://experts.library.ucdavis.edu/individual/jamlewis> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-vaccines> .
+<http://experts.library.ucdavis.edu/individual/gbarnold> <http://vivoweb.org/ontology/core#freetextKeyword> "RAPID grant, ephemeral data, scraping, local government" .
+<http://experts.library.ucdavis.edu/individual/gbarnold> <http://vivoweb.org/ontology/core#researchOverview> "Local government response (just submitted a RAPID on this), including decision-making about service resumption; public support for containment and mitigation measures, and determinants of that support" .
+<http://experts.library.ucdavis.edu/individual/fzdandkr> <http://vivoweb.org/ontology/core#freetextKeyword> "Anti-viral drugs, immune-therapeutics" .
+<http://experts.library.ucdavis.edu/individual/fzdandkr> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-antiviral-agents> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-immunity-innate> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/qzgong> .
+<http://experts.library.ucdavis.edu/individual/ckreuder> <http://vivoweb.org/ontology/core#freetextKeyword> "pandemic preparedness, COVID-response, emerging infectious disease research, infectious disease epidemiology, surveillance" .
+<http://experts.library.ucdavis.edu/individual/ckreuder> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-pandemics> .
+<http://experts.library.ucdavis.edu/individual/ckreuder> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-epidemics> .
+<http://experts.library.ucdavis.edu/individual/jeisen> <http://vivoweb.org/ontology/core#freetextKeyword> "Genomics and phylogenetics;&nbsp;Communications" .
+<http://experts.library.ucdavis.edu/individual/jeisen> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-phylogeny> .
+<http://experts.library.ucdavis.edu/individual/jeisen> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-genomics> .
+<http://experts.library.ucdavis.edu/individual/jeisen> <http://vivoweb.org/ontology/core#researchOverview> "<strong>&nbsp;</strong>COVID environmental sampling (surfaces, buildings, etc) and viability;" .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-rna> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/saviran> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-high-throughput-nucleotide-sequencing> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/saviran> .
+<http://experts.library.ucdavis.edu/individual/mhess> <http://vivoweb.org/ontology/core#freetextKeyword> "microbiome, microbial ecology, microbe-virus-host interactions" .
+<http://experts.library.ucdavis.edu/individual/mhess> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-host-pathogen-interactions> .
+<http://experts.library.ucdavis.edu/individual/saviran> <http://vivoweb.org/ontology/core#freetextKeyword> "genomic data analysis, modeling RNA structure, modeling RNA-protein interactions" .
+<http://experts.library.ucdavis.edu/individual/saviran> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-models-molecular> .
+<http://experts.library.ucdavis.edu/individual/saviran> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-genomics> .
+<http://experts.library.ucdavis.edu/individual/saviran> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-rna> .
+<http://experts.library.ucdavis.edu/individual/saviran> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-high-throughput-nucleotide-sequencing> .
+<http://experts.library.ucdavis.edu/individual/saviran> <http://vivoweb.org/ontology/core#researchOverview> "Computational Biology with focus on RNA structure and RNA-protein interaction analysis. Specialize in analysis of high-throughput NGS-based structure probing data, mostly in the context of RNA structure-function studies." .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-vaccines> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/jamlewis> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-cell-membrane> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/rfaller> .
+<http://experts.library.ucdavis.edu/individual/sppeisertlblgov> <http://vivoweb.org/ontology/core#researchOverview> "<strong></strong>Accurate privacy-preserving analysis and AI without exposing PII or PHI" .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-algorithms> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/rfaller> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-models-molecular> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/rfaller> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-models-molecular> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/saviran> .
+<http://experts.library.ucdavis.edu/individual/ez075053> <http://vivoweb.org/ontology/core#freetextKeyword> "Tissue distribution, viral persistence, character of innoculum (free virus vs. extracellular vesicles etc), pathology" .
+<http://experts.library.ucdavis.edu/individual/ez075053> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-science-metrix-pathology> .
+<http://experts.library.ucdavis.edu/individual/vocab-for-0104-statistics> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/cibtty> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-proteins> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/rfaller> .
+<http://experts.library.ucdavis.edu/individual/haczku> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-pulmonary-surfactant-associated-protein-d> .
+<http://experts.library.ucdavis.edu/individual/haczku> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-oxidative-stress> .
+<http://experts.library.ucdavis.edu/individual/haczku> <http://vivoweb.org/ontology/core#researchOverview> "I have a project to study asthmatic macaques and the role of oxidative stress during exacerbations caused by environmental exposures or viral infection such as COVID-19. We are treating the macaques with LGM1506 (a flaxseed derivative anti oxidant). We believe this compound could significantly alleviate lung inflammation caused by COVID-19" .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-oxidative-stress> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/haczku> .
+<http://experts.library.ucdavis.edu/individual/cibtty> <http://vivoweb.org/ontology/core#freetextKeyword> "data analysis, make predictions" .
+<http://experts.library.ucdavis.edu/individual/cibtty> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-for-0104-statistics> .
+<http://experts.library.ucdavis.edu/individual/ataha> <http://vivoweb.org/ontology/core#freetextKeyword> "lipidomics, lipid signaling" .
+<http://experts.library.ucdavis.edu/individual/ataha> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-lipids> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-genomics> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/jeisen> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-genomics> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/saviran> .
+<http://experts.library.ucdavis.edu/individual/vocab-science-metrix-pathology> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/ez075053> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-olfactory-receptor-neurons> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/qzgong> .
+<http://experts.library.ucdavis.edu/individual/fzmcd> <http://vivoweb.org/ontology/core#researchOverview> "Plant-based production of COVID-19 therapeutics and diagnostics" .
+<http://experts.library.ucdavis.edu/individual/cmbarker> <http://vivoweb.org/ontology/core#freetextKeyword> "<strong>&nbsp;</strong>Data visualization, Mapping, Epidemiological modeling, High-throughput extraction and RT-PCR" .
+<http://experts.library.ucdavis.edu/individual/cmbarker> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-epidemics> .
+<http://experts.library.ucdavis.edu/individual/mcsor002> <http://vivoweb.org/ontology/core#researchOverview> "<strong>&nbsp;</strong>Administrative support for CIID COVID-19 researchers" .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-antiviral-agents> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/fzdandkr> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-epidemics> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/cmbarker> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-epidemics> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/ckreuder> .
+<http://experts.library.ucdavis.edu/individual/rfaller> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-models-molecular> .
+<http://experts.library.ucdavis.edu/individual/rfaller> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-algorithms> .
+<http://experts.library.ucdavis.edu/individual/rfaller> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-cell-membrane> .
+<http://experts.library.ucdavis.edu/individual/rfaller> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-monte-carlo-method> .
+<http://experts.library.ucdavis.edu/individual/rfaller> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-proteins> .
+<http://experts.library.ucdavis.edu/individual/rfaller> <http://vivoweb.org/ontology/core#researchOverview> "<strong></strong>Protein modeling" .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-lipids> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/ataha> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-host-pathogen-interactions> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/mhess> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-pulmonary-surfactant-associated-protein-d> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/haczku> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-monte-carlo-method> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/rfaller> .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-pandemics> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/ckreuder> .
+<http://experts.library.ucdavis.edu/individual/jarsuaga> <http://vivoweb.org/ontology/core#researchOverview> "Data science and biophysical approaches for exploring the sequence space of COVD-19 S protein" .
+<http://experts.library.ucdavis.edu/individual/vocab-mesh-phylogeny> <http://vivoweb.org/ontology/core#researchAreaOf> <http://experts.library.ucdavis.edu/individual/jeisen> .
+<http://experts.library.ucdavis.edu/individual/qzgong> <http://vivoweb.org/ontology/core#freetextKeyword> "olfactory neuroepithelium, viral invasion, VSV model" .
+<http://experts.library.ucdavis.edu/individual/qzgong> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-immunity-innate> .
+<http://experts.library.ucdavis.edu/individual/qzgong> <http://vivoweb.org/ontology/core#hasResearchArea> <http://experts.library.ucdavis.edu/individual/vocab-mesh-olfactory-receptor-neurons> .
+<http://experts.library.ucdavis.edu/individual/qzgong> <http://vivoweb.org/ontology/core#researchOverview> "My lab is interested in the innate immune mechanisms in the olfactory neuroepithelium that prevent viral invasion into the brain via the olfactory nerve. We are interested to participate in evaluating SARS-CoV-2 infection in the olfactory mucosa and its potential spread into the brain, particularly examining the olfactory bulb. We are also interested in participating in any longitudinal studies to investigate the long term impact of SARS-CoV-2 on olfactory function in correlation to other neurodegenerative manifestation." .
+}}

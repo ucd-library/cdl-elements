@@ -1,0 +1,7 @@
+WITH <http://vitro.mannlib.cornell.edu/default/vitro-kb-2>
+CONSTRUCT { ?s ?p ?o  }
+WHERE {
+      ?s ?p ?o.
+      FILTER ( ! regex(str(?s), "http://aims.fao.org/aos/geopolitical.owl#") )
+  		}
+}

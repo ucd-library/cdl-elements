@@ -1,0 +1,12 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+DELETE { graph ?g { ?u ?p ?t. } }
+WHERE {
+  { graph ?g {
+      bind (<http://experts.library.ucdavis.edu/individual/quinn> as ?u)
+      bind (rdf:type as ?p)
+#      bind ("quinn" as ?o)
+#      ?u ?p ?o.
+      ?u ?p ?t
+    }
+   }
+}

@@ -1,0 +1,9 @@
+DELETE { graph ?g { ?s ?p ?o  } }
+WHERE {
+ bind(<http://vitro.mannlib.cornell.edu/default/vitro-kb-2>  as ?g).
+  { graph ?g {
+      ?s ?p ?o.
+      FILTER ( ! regex(str(?s), "http://aims.fao.org/aos/geopolitical.owl#") )
+  		}
+  }
+}
