@@ -13,7 +13,7 @@ elements [--api=<elements_endpoint>] [-S|--session=<httpie session>] \
          [-b|--base=<base>] [-n|--dry-run] [-p|--print] [-h|--help]\
   <command> [<args>]
 
-  where <command> is one of harvest
+  where <command> is one of feed feed.split groups groups.sub drop graph
 
 elements is a script the simplifies the retrieval of an elements feed API.
 L</"COMMANDS"> is summary of the commands that are available.
@@ -643,6 +643,69 @@ function feed () {
   done
 
 }
+
+
+
+: <<='cut'
+=pod
+
+=head2 DROP
+
+harvest  <options> B<drop> <cas_ids>
+
+B<rs_utils delete> deletes (faux deletes) a user from an active configuration.
+The user is not really deleted, instead all the types that are associated with
+the user are deleted.  This elminates them from people part of the repository.
+
+=cut
+
+function drop () {
+
+  local sel="${G[util_xmlstarlet]} sel -N a=http://www.w3.org/2005/Atom"
+  local ed="${G[util_xmlstarlet]} ed -N a=http://www.w3.org/2005/Atom"
+  local cdir=${G[base]}/${G[configuration]}
+  local ddir=${cdir}/data/sparql/deletions
+
+#  local get
+  read -r -d '' get <<'GET';
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX experts: <http://experts.library.ucdavis.edu/individual/>
+SELECT ?g ?u ?p ?t
+WHERE {
+  { graph ?g {
+      bind (expert:${u} as ?u)
+      bind (rdf:type as ?p)
+      ?u ?p ?t
+    }
+   }
+};
+GET
+
+local drop;
+read -r -d '' drop <<'DROP';
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+DELETE { graph ?g { ?u ?p ?t. } }
+WHERE {
+  { graph ?g {
+      bind (<http://experts.library.ucdavis.edu/individual/${u}> as ?u)
+      bind (rdf:type as ?p)
+      ?u ?p ?t
+    }
+   }
+}
+DROP
+
+  [[ ! -d $cdir ]] && err 1 $cdir not found
+
+  for u in "$@"; do
+    [[ -d ${ddir} ]] || mkdir -p ${ddir};
+    eval "echo \"${get}\"" > ${ddir}/$u.save;
+    eval "echo \"${drop}\"" > ${ddir}/$u.sqarql;
+    "http"
+    log rm $u
+  done
+}
+
 
 :<<=cut
 

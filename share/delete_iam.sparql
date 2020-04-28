@@ -1,0 +1,5 @@
+DELETE { graph ?g { ?s ?p ?o  } }
+WHERE {
+ bind(<http://iam.ucdavis.edu>  as ?g).
+  { graph ?g { ?s ?p ?o. } }
+}

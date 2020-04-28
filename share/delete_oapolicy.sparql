@@ -1,0 +1,5 @@
+DELETE { graph ?g { ?s ?p ?o  } }
+WHERE {
+ bind(<http://oapolicy.universityofcalifornia.edu>  as ?g).
+  { graph ?g { ?s ?p ?o. } }
+}
