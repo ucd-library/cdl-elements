@@ -84,9 +84,11 @@ Specify the catagories to split,
 
 =head2 GROUP.SUB
 
-  elements group.sub <--feed_groups=I<groups>> <--children> <--parents> groups.xml
-  B<elements group.sub> command reads in a group feed, and sub-selects out the
-  groups associated with the passed C<--feed_groups> parameter.  Both C<--children> and C<--parents> can be included.  The hierarchi y is adjusted so the file is self-consistent.
+  elements group.sub <--feed_groups=I<groups>> <--children> <--parents>
+  groups.xml B<elements group.sub> command reads in a group feed, and
+  sub-selects out the groups associated with the passed C<--feed_groups>
+  parameter. Both C<--children> and C<--parents> can be included. The hierarchy
+  is adjusted so the file is self-consistent.
 
 =head3 GROUP.SUB OPTIONS
 
@@ -94,7 +96,7 @@ Specify the catagories to split,
 
 =item B<--feed_groups=I<groups>>
 
-Specify the groups to sub select config default is C<feed:groups:>.
+Specify the groups to sub select config default is C<feed:groups:>.  Inidividual groups can be comma seprated, or you can add multiple C<--feed_groups=> entries.  If this is included, the groups in the C<elements.yml> file are not included.
 
 =item B<--parents>
 
@@ -103,6 +105,15 @@ Include all parents of the passed group
 =item B<--children>
 
 Include all children of the passed group.
+
+=item B<--format=<ids|feed>>
+
+By default the entire feed is sub-selected, with C<--format=ids> only the valid
+ids are returned. This includes C<--parents> and C<--children>
+
+=item B<--output=I<filename>>
+
+output subselected file to a specific file location.
 
 =back
 
@@ -133,21 +144,27 @@ specify the USER, then you are prompted for the password.
 
 =head2 FEED
 
-  elements <global-elements> feed [--groups=<groups>] [-n|--no-run] cats cats
+  elements <global-elements> feed [--groups=<group_ids,>] [--users=<user_ids,>] cats cats ...
 
 B<elements feed> uses the ATOM feed api to retreive all categories from the
 elements database. The function saves each chunk of the category and follows the
 c<next> parameter until completed.  The files are saved to the C<feed> directory.
 
-possible categories are c<groups>,c<users>,c<publications>,c<relationships>
+possible categories are c<groups>,c<users>,c<publications>,c<user-relationships>
 
-=head3 GET OPTIONS
+=head3 FEED OPTIONS
 
 =over 4
 
-=item B<-n|--no-run>
+=item B<--groups=<group_ids>>
 
-Do not actually run the command.
+Specify a set of groups to download. By default, these are specified in the
+feed_groups section of the elements.yml file.
+
+=item B<--users=<user_ids>>
+
+Specify a set of users to download. By default, these are specified in the
+feed_users section of the elements.yml file.
 
 =back
 
@@ -160,9 +177,9 @@ c<feed/groups.xml> and then creating a subgraph (using <group.sub> with all
 parents of the selected <graph> and all the children. This is saved to
 C<feeds/graph.000>
 
-The c<users> and c<publications> calls are made using explicit membership calls
-for the specified group, and the children. This is two build explicit membership
-of these categories.
+For specified c<groups>, the c<users> and c<publications> calls are made using
+explicit membership calls for the specified group and the children. This is to
+build explicit membership of these categories.
 
 =head2 GET
 
