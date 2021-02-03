@@ -10,7 +10,7 @@ elements - Harvest an Elements feed.
 =head1 SYNOPSIS
 
 elements [--api=<elements_endpoint>] [-S|--session=<httpie session>] \
-         [-b|--base=<base>] [-n|--dry-run] [-p|--print] [-h|--help]\
+         [-b|--base=<base>] [-h|--help]\
   <command> [<args>]
 
   where <command> is one of harvest
@@ -39,12 +39,6 @@ Specify the base directory for your feed results, default C<base=./>. Under this
 directory, we have temporary C<feed> directory holding the individual calls
 to the elements backend, and C<raw-records> which stores the XML files for the
 individual records. Under C<raw-records> are C<users>,C<relationships>, C<groups>
-
-
-=item B<-n|--dry-run>
-
-Show what you would do do not really do it. Because some commands require
-multiple access to the server, this command does not always work properly :(.
 
 =item B<-v|--verbose>
 
@@ -75,8 +69,21 @@ function _parse_yaml() {
    }'
 }
 
+#MAIN
+# global Variables
+declare -A G=(
+  [api]='https://oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5'
+  [http_session]="elements"
+  [base]="."
+  [users]=
+  [groups]=
+  [util_rsync]="rsync"
+  [util_xmlstarlet]="xmlstarlet"
+  [util_http]="http"
+);
+
 function init() {
-    local opts=`$GETOPT -o A:bnhS:v --long verbose,base:,api:,http_session:,session:,dry-run,help -n 'elements' -- "$@"`
+    local opts=`$GETOPT -o A:bnhS:v --long users:,verbose,base:,api:,http_session:,session:,dry-run,help -n 'elements' -- "$@"`
     if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
     eval set -- "$opts"
@@ -87,9 +94,8 @@ function init() {
         -A | --api) CMD[api]=$2; shift 2;;
 	      --session | --http_session) CMD[http_session]=$2;  shift 2;;
 	      -b | --base) G[base]=$2;  shift 2;;
+	      -u | --users) CMD[users]=$2;  shift 2;;
 	      -v | --verbose) G[verbose]=1;  shift;;
-	      -n | --dry-run) G[noop]=1; shift ;;
-	      --print | --http_print) CMD[http_print]=$2; shift 2;;
         -h | --help ) exec pod2text $0;;
 	      -- ) shift; break;;
 	      *) shift; break;
@@ -102,8 +108,16 @@ function init() {
       eval $(_parse_yaml "$config")
     fi
 
+    # system variables (ELEMENTS_FOO_BAR) over config file
+    # the HARVEST command uses root variables for these input, that is, eg
+    # FUSEKI_PASSWORD, etc.
+    for i in "${!G[@]}"; do
+      eval v=\$ELEMENTS_${i^^}
+      [[ -n $v ]] && G[$i]=$v
+    done
+
     # COMMAND LINE FOR THESE OVER YAML file
-    for i in http_session http_print; do
+    for i in "${!CMD[@]}"; do
       [[ -n ${CMD[$i]} ]] && G[$i]=${CMD[$i]};
     done
 
@@ -154,54 +168,6 @@ function main.cmd () {
 function log() {
   [[ -n ${G[verbose]} ]] && (>&2 echo LOG: $@)
 }
-
-# # log_run was an idea, but I decided it was too complicated to use with pipes (as I at least tried below)
-# function log_run() {
-#   local OPTS=();
-#   while true; do
-# 	  case $1 in
-# 	    -*) OPTS+=($1); shift ;;
-# 	    -- ) shift; break;;
-# 	    *) break;
-# 	  esac
-#   done
-
-#   local opts=`$GETOPT --long stdin:,stdout:,level:,run -n 'elements log_run' -- fake_cmd "${OPTS[@]}"`
-#   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
-
-#   eval set -- "$opts" "$@"
-
-#   local stdin=
-#   local stdout=
-#   local run=
-#   while true; do
-# 	  case $1 in
-#       --level ) level=$2; shift 2;;
-#       --stdin ) stdin=$2; shift 2;;
-#       --stdout ) stdout=$2; shift 2;;
-#       --run ) run=1; shift ;;
-# 	    -- ) shift; break;;
-# 	    *) shift; break;
-#     esac
-#   done
-
-#   local LOG=LOG;
-#   [[ -n $run ]] && LOG=RUN;
-
-#   if [[ -n $stdout && -n $stdin ]]; then
-#       [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin" ">$stdout")
-#       [[ -n $run ]] && ($@ < $stdin > $stdout)
-#   elif [[ -n $stdout && -z $stdin ]]; then
-#     [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" ">$stdout")
-#     [[ -n $run ]] && ("$@" > "$stdout")
-#   elif [[ -n $stdin && -z $stdout ]]; then
-#     [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@" "<$stdin")
-#     [[ -n $run ]] && ($@ < $stdin)
-#   else
-#     [[ -n ${G[verbose]} ]] && (>&2 echo RUN: "$@")
-#     [[ -n $run ]] && ($@)
-#   fi
-# }
 
 function err() {
   local n=1;
@@ -298,9 +264,9 @@ function feed.split () {
 
 =head2 GROUP.SUB
 
-  elements group.sub <--feed_groups=I<groups>> <--children> <--parents>
+  elements group.sub <--groups=I<groups>> <--children> <--parents>
   groups.xml B<elements group.sub> command reads in a group feed, and
-  sub-selects out the groups associated with the passed C<--feed_groups>
+  sub-selects out the groups associated with the passed C<--groups>
   parameter. Both C<--children> and C<--parents> can be included. The hierarchy
   is adjusted so the file is self-consistent.
 
@@ -308,9 +274,9 @@ function feed.split () {
 
 =over 4
 
-=item B<--feed_groups=I<groups>>
+=item B<--groups=I<groups>>
 
-Specify the groups to sub select config default is C<feed:groups:>.  Inidividual groups can be comma seprated, or you can add multiple C<--feed_groups=> entries.  If this is included, the groups in the C<elements.yml> file are not included.
+Specify the groups to sub select config default is C<feed:groups:>.  Inidividual groups can be comma seprated, or you can add multiple C<--groups=> entries.  If this is included, the groups in the C<elements.yml> file are not included.
 
 =item B<--parents>
 
@@ -334,14 +300,14 @@ output subselected file to a specific file location.
 =cut
 
 function group.sub() {
-  local opts=`$GETOPT -o o:g:pcf: --long output:,feed_groups:,parents,children,format: -n 'elements group.sub' -- "$@"`
+  local opts=`$GETOPT -o o:g:pcf: --long output:,groups:,parents,children,format: -n 'elements group.sub' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
 
   local sel="${G[util_xmlstarlet]} sel -N a=http://www.w3.org/2005/Atom"
   local ed="${G[util_xmlstarlet]} ed -O -N a=http://www.w3.org/2005/Atom"
-  local feed_groups=();
+  local groups=();
   local id;
   local ids=();
   local parents=;
@@ -352,7 +318,7 @@ function group.sub() {
 	  case $1 in
       -o | --output ) output=$2; shift 2;;
       -f | --format ) format=$2; shift 2;;
-      -g | --feed_groups ) feed_groups+=("$2"); shift 2;;
+      -g | --groups ) groups+=("$2"); shift 2;;
       -p | --parents ) parents='--parents'; shift;;
       -c | --children ) children='--children'; shift;;
 	    -- ) shift; break;;
@@ -367,13 +333,13 @@ function group.sub() {
     err 1 "No group file specified"
   fi
 
-  # Convert --feed_groups to id list.
-  if [[ ${#feed_groups[@]} == 0 ]]; then
-    feed_groups=(${G[feed_groups]})
+  # Convert --groups to id list.
+  if [[ ${#groups[@]} == 0 ]]; then
+    groups=(${G[groups]})
   fi
 
   # First get a list of all the groups we are using
-  for i in ${feed_groups[@]}; do
+  for i in ${groups[@]}; do
     local add_groups=();
     IFS=',' read -ra add_groups <<<"$i"
     ids+=("${add_groups[@]}")
@@ -500,12 +466,12 @@ possible categories are c<groups>,c<users>,c<publications>,c<user-relationships>
 =item B<--groups=<group_ids>>
 
 Specify a set of groups to download. By default, these are specified in the
-feed_groups section of the elements.yml file.
+groups section of the elements.yml file.
 
 =item B<--users=<user_ids>>
 
 Specify a set of users to download. By default, these are specified in the
-feed_users section of the elements.yml file.
+users section of the elements.yml file.
 
 =back
 
@@ -525,21 +491,19 @@ build explicit membership of these categories.
 =cut
 
 function feed () {
-  local opts=`$GETOPT -o g:u: --long groups:,detail:,users:,user-groups -n 'elements feed' -- "$@"`
+  local opts=`$GETOPT -o g:i: --long groups:,ids:,user-groups -n 'elements feed' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
 
   local run='--run'
-  local users=${G[feed_users]}
-  local groups=${G[feed_groups]}
-  local detail=${G[feed_detail]}
+  local ids=${G[users]}
+  local groups=${G[groups]}
   local user_groups=''
   while true; do
 	  case $1 in
       -g | --groups ) groups=$2; shift 2;;
-      -u | --users ) ids=$2; shift 2;;
-      -d | --detail ) detail=$2; shift 2;;
+      -i | --ids ) ids=$2; shift 2;;
       -n | --user-groups ) user_groups=1; shift ;;
 	    -- ) shift; break;;
 	    *) shift; break;
@@ -561,15 +525,15 @@ function feed () {
       groups )
         log ${http} ${G[api]}/groups ">" ${groups_xml}
         ${http} ${G[api]}/groups > ${groups_xml}
-        log group.sub --format=feed --feed_groups=${groups} --parents ${groups_xml} ">" ${groups_000}
-        group.sub --format=feed --feed_groups=${groups} --parents ${groups_xml} > ${groups_000}
+        log group.sub --format=feed --groups=${groups} --parents ${groups_xml} ">" ${groups_000}
+        group.sub --format=feed --groups=${groups} --parents ${groups_xml} > ${groups_000}
         shift;;
       users )
         if [[ -n ${groups} && -n ${user_groups} ]] ; then
           [[ -f ${groups_000} ]] || err 1 "${groups_000} file missing. elements feed groups --group=${group}"
-          log group.sub --format=ids --children --feed_groups=${groups} ${groups_000}
-          for g in $(group.sub --format=ids --children --feed_groups=${groups} ${groups_000}) ; do
-            next="${G[api]}/users?group-membership=explicit&groups=${g}&detail=$detail"
+          log group.sub --format=ids --children --groups=${groups} ${groups_000}
+          for g in $(group.sub --format=ids --children --groups=${groups} ${groups_000}) ; do
+            next="${G[api]}/users?group-membership=explicit&groups=${g}&detail=full"
             let n=0;
             while [[ -n ${next} ]]; do
               printf -v N "%03d" $n
@@ -582,8 +546,8 @@ function feed () {
             done
           done
         fi;
-        if [[ ${users} ]]; then
-          next="${G[api]}/users?ids=${users}&detail=$detail"
+        if [[ ${ids} ]]; then
+          next="${G[api]}/users?ids=${ids}&detail=full"
           let n=0;
           while [[ -n ${next} ]]; do
             printf -v N "%03d" $n
@@ -652,7 +616,7 @@ function feed () {
 
 =head2 GET
 
-  elements get [-n|--noop] function [[parm==val1 parm2==val2]]
+  elements get -n|--no-run function [[parm==val1 parm2==val2]]
 
 B<elements get> is a simple wrapper around the B<httpie GET> command.
 This allows users to setup their basic authorization, which is then stored in
@@ -764,21 +728,6 @@ ${FLAGS_GETOPT_CMD:-getopt}
 Quinn Hart <qjhart@ucdavis.edu>
 
 =cut
-
-
-#MAIN
-# global Variables
-declare -A G=(
-  [noop]=''
-  [http_ssl]="tls1.2"
-  [http_print]="b"
-  [http_session]="elements"
-  [base]="."
-  [util_rsync]="rsync"
-  [util_xmlstarlet]="xmlstarlet"
-  [util_http]="http"
-  [feed_detail]="full"
-);
 
 OPTS=();
 while true; do
