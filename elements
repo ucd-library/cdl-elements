@@ -587,8 +587,8 @@ function feed () {
       publications )
         for fn in $fdir/user-relationships.*; do
           local tfn=$(echo $fn | sed -e 's/user-relationships/publications/')
-          log "$selT -t -v \"/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id ${fn}\" | paste -sd ','"
-          ids=$($selT -t -v "/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id" ${fn} | paste -sd ',' )
+          log "$selT -t -v \"/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id ${fn}\" | paste -sd ',' -"
+          ids=$($selT -t -v "/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id" ${fn} | paste -sd ',' -)
           if [[ -n $ids ]] ; then
             log ${http} "${G[api]}/publications?ids=${ids}&detail=full" '>' ${tfn}
             ${http} "${G[api]}/publications?ids=${ids}&detail=full" > ${tfn}
@@ -598,7 +598,7 @@ function feed () {
       relationships)
         for fn in $fdir/user-relationships.*; do
           local tfn=$(echo $fn | sed -e 's/user-relationships/relationships/')
-          ids=$($selT -t -v /a:feed/a:entry/api:relationship/@id ${fn} | paste -sd ',' )
+          ids=$($selT -t -v /a:feed/a:entry/api:relationship/@id ${fn} | paste -sd ',' -)
           if [[ -n $ids ]] ; then
             log ${http} "${G[api]}/relationships?ids=${ids}&detail=ref" '>' ${tfn}
             ${http} "${G[api]}/relationships?ids=${ids}&detail=ref" > ${tfn}
