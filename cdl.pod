@@ -60,10 +60,13 @@ require the functions, C<pod2usage> and C<pod2text> to work properly.
 =head1 COMMANDS
 
 Next there are a set of commands that communicate with the CDL service. Note,
-that cdl uses L<httpie|https://httpie.org/> for its http communcation.  This
-allows users to combine the program with other httpie requests if
-required. Login infomation is stored using the standard C<httpie> methodology,
-see L</"GLOBAL OPTIONS"> for httpie options.
+that ezid uses L<httpie|https://httpie.org/> for its http communcation. This
+allows users to combine ezid with other httpie requests if required. Login
+infomation is stored using the standard C<httpie> methodology, see L</"GLOBAL OPTIONS"> for httpid options.
+
+C<elements [options] harvest --full> Harvests a number of feeds from the
+Elements database and stores each record in a separate file.  This is to match how
+the Sympletic Harvester works
 
 =head2 LOGIN
 
@@ -107,19 +110,12 @@ for the query.  Default is user
 
 =back
 
-=head2 load_jsonld
+=head2 groups
 
-  cdl <global-elements> load_jsonld <--log=messege> filenames
+  cdl <global-elements> groups
 
-  B<cdl load_jsonld> loads all filenames passed to the function.
-
-=over 4
-
-=item C<--log>
-
-You can specify a messege to include in the log file
-
-=back
+B<cdl groups> uses the ATOM feed api to retreive the CDL groups from the
+elements database.
 
 =head2 users
 

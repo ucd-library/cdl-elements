@@ -1,7 +1,8 @@
 #! /bin/make
 SHELL:=/bin/bash
 
-cmd:=elements
+# No longer include elements as a command
+cmd:=cdl
 prefix:=$(shell echo ~/.local)
 
 
