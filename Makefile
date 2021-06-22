@@ -2,7 +2,7 @@
 SHELL:=/bin/bash
 
 # No longer include elements as a command
-cmd:=cdl
+cmd:=cdl-elements
 prefix:=$(shell echo ~/.local)
 
 
