@@ -350,6 +350,7 @@ function xml2jsonld() {
   "field-name":"api:field-name",
   "field-number":"api:field-number",
   "$t":"api:field-value",
+  "api:web-address":{ "@container": "@list" },
   "categoryxx":{"@type":"@id","@id":"rdf:type"},
   "typexx":{"@type":"@id","@id":"rdf:type"}
 }}';
@@ -398,22 +399,6 @@ You can specify a messege to include in the log file
 function load_jsonld () {
   local file;
   local count;
-  local opts;
-  if ! opts=$($GETOPT -o l: --long log -n 'cdl load_jsonld' -- "$@"); then
-    echo "Bad Command Options." >&2 ; exit 1 ; fi
-
-  eval set -- "$opts"
-
-  local log
-  local file_log
-
-  while true; do
-	  case $1 in
-	    -l | --log) let log=$2;  shift 2;;
-	    -- ) shift; break;;
-	    *) shift; break;
-    esac
-  done
 
   # G[data] is a SPARQL DATA LOAD
   if [[ -n ${G[data]} ]]; then
@@ -421,8 +406,8 @@ function load_jsonld () {
     local load=${G[data]}
     for file in "$@"; do
       if [[ -f $file ]]; then
-        riot --formatted=ttl $file > $file.ttl
-        log -v -v "curl --location --request POST --user ${auth} -H \"Content-Type:multipart/form-data\" -F \"file=@${file}\" \"${load}?graph=${G[graph]}\""
+        #riot --formatted=ttl $file > $file.ttl
+        log -v -v "curl -s --location --request POST --user ${auth} -H \"Content-Type:multipart/form-data\" -F \"file=@${file}\" \"${load}?graph=${G[graph]}\""
         count=$(curl -s --location --request POST --user ${auth} -H "Content-Type:multipart/form-data" -F "file=@${file}" "${load}?graph=${G[graph]}" | jq .count)
         if [[ -n $log ]]; then
           log -v "$log $count"
@@ -489,7 +474,7 @@ Specify a set of groups to download.
 
 
 function users () {
-  local opts=`$GETOPT -o a:g:pnm: --long affected-since:,modified-since:,groups:,pubs,no-pubs -n 'elements feed' -- "$@"`
+  local opts=`$GETOPT -o g:u:pn --long tdb:,per-page:,groups:,detail:,usernames:,ids:,user-groups,pubs,no-pubs -n 'elements feed' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
@@ -498,11 +483,9 @@ function users () {
   declare -A CMD;
   while true; do
 	  case $1 in
-#      -g | --groups ) CMD[user_groups]=$2; shift 2;;
-      -m | --modified-since) CMD[modified]=$2; shift 2;;
-      -m | --affected-since) CMD[affected]=$2; shift 2;;
-      -n | --no-pubs ) CMD[user_pubs]=''; shift ;;
+      -g | --groups ) CMD[user_groups]=$2; shift 2;;
       -p | --pubs ) CMD[user_pubs]=1; shift ;;
+      -n | --no-pubs ) CMD[user_pubs]=''; shift ;;
 	    -- ) shift; break;;
 	    *) shift; break;
     esac
@@ -513,38 +496,31 @@ function users () {
     [[ -n ${CMD[$i]} ]] && G[$i]=${CMD[$i]};
   done
 
-  local modified_affected=''
-  for i in modified affected; do
-    log $i ${CMD[i]}
-    [[ -n ${CMD[$i]} ]] && modified_affected+="&${i}-since=${CMD[$i]}"
-  done
-  log -v mods: ${modified_affected}
-
   local g n N uf;
 
   [[ -d ${G[cache]} ]] || err 1 "cache ${G[cache]} doesn't exist or isn't a directory"
 
   local selT="${G[util_xmlstarlet]} sel -T -N a=http://www.w3.org/2005/Atom"
 
-#  # Do we have any user_groups?
-#  if [[ -n ${G[user_groups]} ]] ; then
-#    for g in ${G[user_groups]//,/ }; do
-#      next="${G[api]}/users?group-membership=implicit&groups=${g}&detail=ref&per-page=250"
-#      let n=0;
-#      while [[ -n ${next} ]]; do
-#        printf -v N "%03d" $n
-#        fn=${G[cache]}/users.${g}.${N};
-#        url_fetch --no-overwrite --file=${fn}.xml "${next}"
-#        next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn}.xml);
-#        let n+=1;
-#      done
-#    done
-#  fi;
+  # Do we have any user_groups?
+  if [[ -n ${G[user_groups]} ]] ; then
+    for g in ${G[user_groups]//,/ }; do
+      next="${G[api]}/users?group-membership=implicit&groups=${g}&detail=ref&per-page=250"
+      let n=0;
+      while [[ -n ${next} ]]; do
+        printf -v N "%03d" $n
+        fn=${G[cache]}/users.${g}.${N};
+        url_fetch --no-overwrite --file=${fn}.xml "${next}"
+        next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn}.xml);
+        let n+=1;
+      done
+    done
+  fi;
 
   # Now loop through all users
   while [[ -n $1 ]]; do
     local username="$1@ucdavis.edu"
-    next="${G[api]}/users?username=${username}&detail=full${modified_affected}"
+    next="${G[api]}/users?username=${username}&detail=full"
     let n=0;
     while [[ -n ${next} ]]; do
       printf -v N "%03d" $n
@@ -561,7 +537,7 @@ function users () {
     for uf in ${G[cache]}/users.${username}.*.xml; do
       # Break into users for each relationship
       for id in $($selT -t -v '/a:feed/a:entry/api:object/@id' $uf); do
-        next="${G[api]}/relationships?involving=user($id)&detail=ref${modified_affected}&per-page=250"
+        next="${G[api]}/relationships?involving=user($id)&detail=ref&per-page=250"
         let n=0;
         while [[ -n ${next} ]]; do
           printf -v N "%03d" $n
@@ -581,7 +557,7 @@ function users () {
       tfn=${tfn%.xml}
       ids=$($selT -t -v /a:feed/a:entry/api:relationship/@id ${fn} | sort -u | paste -sd ',' )
       if [[ -n $ids ]] ; then
-        url_fetch --no-overwrite --file=${tfn}.xml "${G[api]}/relationships?ids=${ids}&detail=ref&per-page=250${modified_affected}"
+        url_fetch --no-overwrite --file=${tfn}.xml "${G[api]}/relationships?ids=${ids}&detail=ref&per-page=250"
         xml2jsonld --type=relationship ${tfn}.xml
         load_jsonld ${tfn}.jsonld
       fi
@@ -594,7 +570,7 @@ function users () {
         tfn=${tfn%.xml}
         ids=$($selT -t -v "/a:feed/a:entry/api:relationship/api:related[@category='publication' and @direction='from']/@id" ${fn} | sort -u | paste -sd ',' )
         if [[ -n $ids ]] ; then
-          next="${G[api]}/publications?ids=${ids}&detail=full${modified_affected}"
+          next="${G[api]}/publications?ids=${ids}&detail=full"
           let n=0;
           while [[ -n ${next} ]]; do
             printf -v N "%03d" $n
