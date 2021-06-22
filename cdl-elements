@@ -5,11 +5,11 @@
 
 =head1  NAME
 
-cdl - Harvest an Elements feed.
+cdl-elements - Harvest an Elements feed.
 
 =head1 SYNOPSIS
 
-cdl [--api=<cdl_endpoint>] [--auth=cdl_auth] [-S|--session=<httpie session>] \
+cdl-elements [--api=<cdl_endpoint>] [--auth=cdl_auth] [-S|--session=<httpie session>] \
          [-c|--cache=<dir>] [-t|--tdb=<tdb-dir>] [-d|--data=<data load endpoint] \
          [-p|--print] [-h|--help]\
   <command> [<args>]
