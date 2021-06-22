@@ -1,14 +1,15 @@
 =head1  NAME
 
-elements - Harvest an Elements feed.
+cdl - Harvest an Elements feed.
 
 =head1 SYNOPSIS
 
-elements [--api=<elements_endpoint>] [-S|--session=<httpie session>] \
-         [-b|--base=<base>] [-n|--dry-run] [-p|--print] [-h|--help]\
+cdl [--api=<cdl_endpoint>] [--auth=cdl_auth] [-S|--session=<httpie session>] \
+         [-c|--cache=<dir>] [-t|--tdb=<tdb-dir>] [-d|--data=<data load endpoint] \
+         [-p|--print] [-h|--help]\
   <command> [<args>]
 
-  where <command> is one of harvest
+  where <command> is one of login xml2jsonld load_jsonld groups users
 
 elements is a script the simplifies the retrieval of an elements feed API.
 L</"COMMANDS"> is summary of the commands that are available.
@@ -17,7 +18,7 @@ L</"COMMANDS"> is summary of the commands that are available.
 
 =over 4
 
-=item B<--api=I<elements_endpoint>>
+=item B<--api=I<cdl_elements_endpoint>>
 
 This is the http address for the elements endpoint.
 
@@ -28,18 +29,20 @@ L<httpie|https://httpie.org/> session variable, and are shared in that command
 configuration. Sessions primarily keep the basic authentication parameters
 saved. By default the B<elements> session is used.
 
-=item B<-b|--base = directory>
+=item B<-c|--cache = directory>
 
-Specify the base directory for your feed results, default C<base=./>. Under this
-directory, we have temporary C<feed> directory holding the individual calls
-to the elements backend, and C<raw-records> which stores the XML files for the
-individual records. Under C<raw-records> are C<users>,C<relationships>, C<groups>
+Specify the cache directory for downloads and intermediate files, default
+C<cache=/var/lib/harvest/cdl>.
 
+=item B<-t|--tdb = directory>
 
-=item B<-n|--dry-run>
+Specify a local tdb location to load the cdl data, default C<tdb=/var/lib/harvest/cdl/tdb>.
 
-Show what you would do do not really do it. Because some commands require
-multiple access to the server, this command does not always work properly :(.
+=item B<-d|--data = fuseki data endpoint>
+
+Specify a remote sparql data endpoint fuseki to load the cdl data.  No
+default. In additiona to command-line auth, this will also use the
+envirionmental parameters C<FUSEKI_USER> and C<FUSEKI_PASSWORD> for authentication, equivalent to C<--data-auth=FUSEKI_USER:FUSEKI_PASSWORD>.
 
 =item B<-v|--verbose>
 
@@ -57,65 +60,10 @@ require the functions, C<pod2usage> and C<pod2text> to work properly.
 =head1 COMMANDS
 
 Next there are a set of commands that communicate with the CDL service. Note,
-that ezid uses L<httpie|https://httpie.org/> for its http communcation. This
-allows users to combine ezid with other httpie requests if required. Login
-infomation is stored using the standard C<httpie> methodology, see L</"GLOBAL OPTIONS"> for httpid options.
-
-C<elements [options] harvest --full> Harvests a number of feeds from the
-Elements database and stores each record in a separate file.  This is to match how
-the Sympletic Harvester works
-
-=head2 FEED.SPLIT
-
-elements I<options> B<feed.split> [--cats=I<columns>]
-
-B<elements feed.split> splits a set of feeded files for a category into
-a individual files for each record.
-
-=head3 FETCTH.SPLIT OPTIONS
-
-=over 4
-
-=item B<--cats=I<cats>>
-
-Specify the catagories to split,
-
-=back
-
-=head2 GROUP.SUB
-
-  elements group.sub <--feed_groups=I<groups>> <--children> <--parents>
-  groups.xml B<elements group.sub> command reads in a group feed, and
-  sub-selects out the groups associated with the passed C<--feed_groups>
-  parameter. Both C<--children> and C<--parents> can be included. The hierarchy
-  is adjusted so the file is self-consistent.
-
-=head3 GROUP.SUB OPTIONS
-
-=over 4
-
-=item B<--feed_groups=I<groups>>
-
-Specify the groups to sub select config default is C<feed:groups:>.  Inidividual groups can be comma seprated, or you can add multiple C<--feed_groups=> entries.  If this is included, the groups in the C<elements.yml> file are not included.
-
-=item B<--parents>
-
-Include all parents of the passed group
-
-=item B<--children>
-
-Include all children of the passed group.
-
-=item B<--format=<ids|feed>>
-
-By default the entire feed is sub-selected, with C<--format=ids> only the valid
-ids are returned. This includes C<--parents> and C<--children>
-
-=item B<--output=I<filename>>
-
-output subselected file to a specific file location.
-
-=back
+that cdl uses L<httpie|https://httpie.org/> for its http communcation.  This
+allows users to combine the program with other httpie requests if
+required. Login infomation is stored using the standard C<httpie> methodology,
+see L</"GLOBAL OPTIONS"> for httpie options.
 
 =head2 LOGIN
 
@@ -142,9 +90,40 @@ specify the USER, then you are prompted for the password.
 
 =back
 
-=head2 FEED
+=head2 xml2jsonld
 
-  elements <global-elements> feed [--groups=<group_ids,>] [--users=<user_ids,>] cats cats ...
+ cdl <global-elements> xml2jsonld --type=[user|user-relationship|relationship|publication|group]
+
+B<cdl xml2jsonld> converts the CDL xml data to jsonld.
+
+=head3 xml2jsonld OPTIONS
+
+=over 4
+
+=item B<--type=[user|user-relationship|relationship|publication|group]>
+
+You pass the type of xml file, which selects the context, and the path to use
+for the query.  Default is user
+
+=back
+
+=head2 load_jsonld
+
+  cdl <global-elements> load_jsonld <--log=messege> filenames
+
+  B<cdl load_jsonld> loads all filenames passed to the function.
+
+=over 4
+
+=item C<--log>
+
+You can specify a messege to include in the log file
+
+=back
+
+=head2 users
+
+  elements <global-elements> users [--groups=<group_ids,>] username username ....
 
 B<elements feed> uses the ATOM feed api to retreive all categories from the
 elements database. The function saves each chunk of the category and follows the
@@ -158,47 +137,7 @@ possible categories are c<groups>,c<users>,c<publications>,c<user-relationships>
 
 =item B<--groups=<group_ids>>
 
-Specify a set of groups to download. By default, these are specified in the
-feed_groups section of the elements.yml file.
-
-=item B<--users=<user_ids>>
-
-Specify a set of users to download. By default, these are specified in the
-feed_users section of the elements.yml file.
-
-=back
-
-= Special Considerations
-
-The c<group> feed is handled in two stages. The elements API has no groups
-subselection for the system groups. This function creates a sub-graph of the
-feed based on the specified group. It does this by saving the elements groups to
-c<feed/groups.xml> and then creating a subgraph (using <group.sub> with all
-parents of the selected <graph> and all the children. This is saved to
-C<feeds/graph.000>
-
-For specified c<groups>, the c<users> and c<publications> calls are made using
-explicit membership calls for the specified group and the children. This is to
-build explicit membership of these categories.
-
-=head2 GET
-
-  elements get [-n|--noop] function [[parm==val1 parm2==val2]]
-
-B<elements get> is a simple wrapper around the B<httpie GET> command.
-This allows users to setup their basic authorization, which is then stored in
-the standard httpie session paratmeters. It is possible to maintain multiple users,
-via the elements I<--session> parameter to maintain different users, eg.
-
-  elements get users
-
-=head3 GET OPTIONS
-
-=over 4
-
-=item B<-n|--no-run>
-
-Do not actually run the command.
+Specify a set of groups to download.
 
 =back
 
