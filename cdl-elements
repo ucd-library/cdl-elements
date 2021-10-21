@@ -153,6 +153,34 @@ function main.cmd () {
     esac
 }
 
+function log_assoc() {
+  local opts;
+  if ! opts=$($GETOPT -o v --long verbose -n 'cdl log_assoc' -- "$@"); then
+    echo "Bad Command Options." >&2 ; exit 1 ; fi
+
+    eval set -- "$opts"
+
+    local log_verbose=0
+
+    while true; do
+	    case $1 in
+	      -v | --verbose) let log_verbose=$log_verbose+1;  shift;;
+	      -- ) shift; break;;
+      esac
+    done
+
+    declare -n v=$1
+    v[exe]="cdl_elements"
+    v[timestamp]="$(date --iso-8601=seconds)"
+
+    if (( ${G[verbose]} >= $log_verbose )) ; then
+      for key in "${!v[@]}"; do
+        printf '%s\0%s\0' "$key" "${v[$key]}"
+      done |
+        jq -Rsc ' split("\u0000") | . as $a | reduce range(0  ; length/2) as $i  ({}; . + {($a[  2*$i]): ($a[2*$i + 1]|fromjson? // .)})'
+    fi
+}
+
 
 function log() {
   local opts;
@@ -171,7 +199,9 @@ function log() {
       esac
     done
 
-  (( ${G[verbose]} >= $log_verbose )) && (echo $@)
+    if (( ${G[verbose]} >= $log_verbose )) ; then
+      printf '{"cmd":"%s","timestamp":"%s","log":"%s"}\n' cdl-elements "$(date --iso-8601=seconds)" "$1"
+    fi
 }
 
 function err() {
@@ -190,6 +220,7 @@ function err() {
 function url_fetch() {
   local opts;
   local begin;
+  declare -A logit=();
 
   if ! opts=$($GETOPT -o f:o --long file:,overwrite,no-overwrite -n 'cdl url_fetch' -- "$@"); then
     echo "Bad Command Options." >&2 ; exit 1 ;
@@ -221,16 +252,18 @@ function url_fetch() {
     else
       log -v -v -- "${CMD[file]} exists"
     fi
-    log -v "http ${CMD[file]} time=$(($SECONDS-$begin))"
+    logit[file]=${CMD[file]}
   else
     log -v -v -- "${http} '$1' > /dev/null"
     ${http} "$1" > /dev/null
-    log -v "http (test) time=$(($SECONDS-$begin))"
+    logit[file]='/dev/null'
   fi
 
+  logit[duration]=$(($SECONDS-$begin))
+  logit[cmd]="url_fetch"
+  logit[url]="$1"
+  log_assoc -v logit
 }
-
-
 
 :<<=cut
 
@@ -267,6 +300,7 @@ function login() {
 
     eval set -- "$opts"
 
+    declare -A logit=();
     local auth=
 
     while true; do
@@ -283,7 +317,9 @@ function login() {
     local http="${G[util_http]} --check-status --session=${G[http_session]} --auth=$auth --print=h "
     log -v -v -- $http ${G[api]}/groups
     local res=$($http ${G[api]}/groups | head -n 1)
-    log -v login: $res
+    logit[cmd]="login"
+    logit[res]=${res//[$'\t\r\n']}
+    log_assoc  -v logit
 }
 
 :<<=cut
@@ -358,16 +394,16 @@ function xml2jsonld() {
   G[jsonld_user_path]='.feed.entry["api:object"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_user_context]=${G[jsonld_context_no_map_id]}
 
-  G[jsonld_groups_path]='.feed.entry[]["api:user-group"]?//.feed.entry["api:user-group"]|(with_entries(if .key=="id" then .key="@id" else . end))';
+  G[jsonld_groups_path]='.feed.entry[]["api:user-group"]? //.feed.entry["api:user-group"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_groups_context]=${G[jsonld_context_map_id]}
 
-  G[jsonld_user-relationship_path]='.feed.entry[]["api:relationship"]?//.feed.entry["api:relationship"]|(with_entries(if .key=="id" then .key="@id" else . end))';
+  G[jsonld_user-relationship_path]='.feed.entry[]["api:relationship"]? //.feed.entry["api:relationship"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_user-relationship_context]=${G[jsonld_context_no_map_id]}
 
-  G[jsonld_relationship_path]='.feed.entry[]["api:relationship"]?//.feed.entry["api:relationship"]|(with_entries(if .key=="id" then .key="@id" else . end))';
+  G[jsonld_relationship_path]='.feed.entry[]["api:relationship"]? //.feed.entry["api:relationship"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_relationship_context]=${G[jsonld_context_no_map_id]}
 
-  G[jsonld_publication_path]='.feed.entry[]["api:object"]?//.feed.entry["api:object"]|(with_entries(if .key=="id" then .key="@id" else . end))';
+  G[jsonld_publication_path]='.feed.entry[]["api:object"]? //.feed.entry["api:object"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_publication_context]=${G[jsonld_context_map_id]}
 
   while [[ -n "$1" ]]; do
@@ -382,23 +418,17 @@ function xml2jsonld() {
 
 =head2 load_jsonld
 
-  cdl <global-elements> load_jsonld <--log=messege> filenames
+  cdl <global-elements> load_jsonld filenames
 
   B<cdl load_jsonld> loads all filenames passed to the function.
-
-=over 4
-
-=item C<--log>
-
-You can specify a messege to include in the log file
-
-=back
 
 =cut
 
 function load_jsonld () {
   local file;
   local count;
+  declare -A logit=([cmd]='load_jsonld');
+
 
   # G[data] is a SPARQL DATA LOAD
   if [[ -n ${G[data]} ]]; then
@@ -409,13 +439,14 @@ function load_jsonld () {
         #riot --formatted=ttl $file > $file.ttl
         log -v -v "curl -s --location --request POST --user ${auth} -H \"Content-Type:multipart/form-data\" -F \"file=@${file}\" \"${load}?graph=${G[graph]}\""
         count=$(curl -s --location --request POST --user ${auth} -H "Content-Type:multipart/form-data" -F "file=@${file}" "${load}?graph=${G[graph]}" | jq .count)
-        if [[ -n $log ]]; then
-          log -v "$log $count"
-        else
-          log -v "load $file graph=${G[graph]} => $count"
-        fi
+
+        logit[file]=${file}
+        logit[graph]=${G[graph]}
+        logit[count]=$count
+        log_assoc logit
       else
-        log "$file not found"
+        logit[err]="$file not found"
+        log_assoc logit
       fi
     done
   fi
@@ -426,11 +457,9 @@ function load_jsonld () {
         riot --formatted=ttl $file > $file.ttl
         log -v -v "tdb2.tdbloader --loc=${G[tdb]} --graph=${G[graph]} $file.ttl"
         count=$(tdb2.tdbloader --loc=${G[tdb]} --graph=${G[graph]} $file.ttl)
-        if [[ -n $log ]]; then
-          log -v "$log $count"
-        else
-          log -v "load $file graph=${G[graph]} => $count"
-        fi
+
+        log -v "load $file graph=${G[graph]} => $count"
+
       else
         log "$file not found"
       fi
