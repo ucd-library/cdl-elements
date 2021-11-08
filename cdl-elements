@@ -394,6 +394,9 @@ function xml2jsonld() {
   G[jsonld_user_path]='.feed.entry["api:object"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_user_context]=${G[jsonld_context_no_map_id]}
 
+  G[jsonld_users_path]='.feed.entry[]["api:object"]|(with_entries(if .key=="id" then .key="@id" else . end))';
+  G[jsonld_users_context]=${G[jsonld_context_no _map_id]};
+
   G[jsonld_groups_path]='.feed.entry[]["api:user-group"]? //.feed.entry["api:user-group"]|(with_entries(if .key=="id" then .key="@id" else . end))';
   G[jsonld_groups_context]=${G[jsonld_context_map_id]}
 
@@ -540,6 +543,7 @@ function users () {
         printf -v N "%03d" $n
         fn=${G[cache]}/users.${g}.${N};
         url_fetch --no-overwrite --file=${fn}.xml "${next}"
+        xml2jsonld --type=users ${fn}.xml
         next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${fn}.xml);
         let n+=1;
       done
