@@ -1,0 +1,75 @@
+* cdl_elements use examples
+
+  The ~cdl_elements~ code is bash script that acts as a wrapper on the CDL
+  Elements API, using some standard linux tools like ~httpie~, and ~xmlstarlet~
+  to parse the results. These are some simple examples of use:
+
+  Since the script uses ~httpie~, the ~login~ function actually just sets the
+  authentication of the REST endpoint inside the ~httpie~ saved values.  For Example,
+
+  #+begin_src bash
+    auth=${user}:${password}
+    cdl-elements login --auth=${auth}
+  #+end_src
+
+  You see the result here:
+
+  #+begin_src bash
+    cat ~/.httpie/sessions/oapolicy.universityofcalifornia.edu_8002/elements.json
+  #+end_src
+
+  #+begin_src json
+  {
+    "__meta__": {
+        "about": "HTTPie session file",
+        "help": "https://httpie.org/doc#sessions",
+        "httpie": "2.2.0"
+    },
+    "auth": {
+        "raw_auth": "ucd:xxxxxxxxx",
+        "type": "basic"
+    },
+    "cookies": {},
+    "headers": {
+        "Accept": "application/json, */*"
+    }
+}
+  #+end_src
+
+  You can use the ~--api~ key to set another endpoint.
+
+    #+begin_src bash
+    cdl-elements --api=https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5 login --auth=${qa-auth}
+  #+end_src
+
+  You can also use the ~--verbose~ key to show an (un)successful request
+
+  #+begin_src bash
+    cdl-elements --verbose --api=https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5 login --auth=${qa-auth}
+  #+end_src
+
+  Responds with :
+
+  #+begin_src json
+    {"cmd":"login","res":"HTTP/1.1 200 OK","exe":"cdl_elements","timestamp":"2022-07-22T12:23:18-07:00"}
+  #+end_src
+
+  Once logged in, you can get a particular set of users  with the ~users~
+  command.
+
+  #+begin_src bash
+    ~/rp-ucd-harvest/cdl-elements/cdl-elements -v --api=https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5 --cache=. users quinn jrmerz
+  #+end_src
+
+  You will probably need to set the ~--cache~ directory.  You can specify to
+  include publications with the ~--pubs~ flag
+
+  #+begin_src bash
+    ~/rp-ucd-harvest/cdl-elements/cdl-elements -v --api=https://qa-oapolicy.universityofcalifornia.edu:8002/elements-secure-api/v5.5 --cache=. users --pubs quinn jrmerz
+  #+end_src
+
+  The ~--v~ option will show the restful requests made.
+
+
+  Note that once you have used the ~login~ function, you can use ~httpie~ itself
+  to investigate other API calls.
