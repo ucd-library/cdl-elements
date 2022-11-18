@@ -67,8 +67,9 @@ declare -A G=(
   [graph]='http://oapolicy.universityofcalifornia.edu/'
   [auth]=''
   [data]=''
+  [tdb]=''
   [http_session]="elements"
-  [cache]="/var/lib/harvest/cdl"
+  [cache]="."
   [util_rsync]="rsync"
   [util_xml2json]="xml2json"
   [util_xmlstarlet]="xmlstarlet"
@@ -132,7 +133,7 @@ function main.cmd () {
     cmd=$1
     shift;
     case $cmd in
-	    get | login | groups | users ) # API requests
+	    get | login | groups | users | publications ) # API requests
 	      $cmd "$@";
 	      ;;
 	    group.sub | group.membership ) # group commands
@@ -482,23 +483,52 @@ function groups() {
 
 :<<=cut
 
+=head2 publications
+
+  cdl-elements <global-elements> publications <cdl-pub number> ....
+
+  Retrieve the given publications.
+
+=cut
+
+
+
+function publications () {
+
+  [[ -d ${G[cache]} ]] || err 1 "cache ${G[cache]} doesn't exist or isn't a directory"
+  local selT="${G[util_xmlstarlet]} sel -T -N a=http://www.w3.org/2005/Atom"
+
+  local ids=$(for i in "$@"; do echo $i; done | sort -u | paste -sd ',' )
+
+  if [[ -n $ids ]] ; then
+    next="${G[api]}/publications?ids=${ids}&detail=full"
+    let n=0;
+    while [[ -n ${next} ]]; do
+      printf -v N "%03d" $n
+      ttfn=publications.${N};
+      url_fetch --no-overwrite --file=${ttfn}.xml "$next"
+      xml2jsonld --type=publication ${ttfn}.xml
+      load_jsonld ${ttfn}.jsonld
+      next=$(${selT} -t -v '//api:page[@position="next"]/@href' ${ttfn}.xml);
+      let n+=1;
+    done
+  fi
+
+  }
+
+:<<=cut
+
 =head2 users
 
   elements <global-elements> users [--groups=<group_ids,>] username username ....
 
-B<elements feed> uses the ATOM feed api to retreive all categories from the
-elements database. The function saves each chunk of the category and follows the
-c<next> parameter until completed.  The files are saved to the C<feed> directory.
-
-possible categories are c<groups>,c<users>,c<publications>,c<user-relationships>
-
-=head3 FEED OPTIONS
+=head3 OPTIONS
 
 =over 4
 
-=item B<--groups=<group_ids>>
+=item B<--pubs|--no-pubs>
 
-Specify a set of groups to download.
+Specify whether to include the users publications or not. Default is B<--no-pubs>
 
 =back
 
@@ -506,7 +536,7 @@ Specify a set of groups to download.
 
 
 function users () {
-  local opts=`$GETOPT -o g:u:pn --long tdb:,per-page:,groups:,detail:,usernames:,ids:,user-groups,pubs,no-pubs -n 'elements feed' -- "$@"`
+  local opts=`$GETOPT -o g:u:pn --long per-page:,groups:,detail:,usernames:,ids:,user-groups,pubs,no-pubs -n 'elements feed' -- "$@"`
   if [ $? != 0 ] ; then echo "Bad Command Options." >&2 ; exit 1 ; fi
 
   eval set -- "$opts"
@@ -565,7 +595,9 @@ function users () {
       let n+=1;
     done
 
-    if [[ -n ${G[user_pubs]} ]] ; then
+    # test of user is public
+    local public=`arq -q --results=csv --query=- --data=${G[cache]}/users.${username}.${N}.jsonld <<<'PREFIX oap: <http://oapolicy.universityofcalifornia.edu/vocab#>  select (true as ?ok) where {[] oap:username ?o; oap:is-public "true"; oap:is-login-allowed "true". }' | tail -n 1`;
+    if [[ "$public" =~ "true" &&  -n ${G[user_pubs]} ]] ; then
       # Get the user relationships, These never get added to the linked database,
       # they are just used to get the required relationships.
       for uf in ${G[cache]}/users.${username}.*.xml; do
