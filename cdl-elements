@@ -503,8 +503,8 @@ function journals () {
 
   local next
 
-#  next="${G[api]}/journals?detail=full"
-  next="${G[api]}/journals?per-page=1000"
+  next="${G[api]}/journals?detail=full"
+#  next="${G[api]}/journals?per-page=1000"
 
   if [[ -n $next ]]; then
     let n=0;
