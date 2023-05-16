@@ -802,7 +802,7 @@ function users () {
     done
 
     # test of user is public
-    local public=`arq -q --results=csv --query=- --data=${G[cache]}/users.${username}.${N}.jsonld <<<'PREFIX oap: <http://oapolicy.universityofcalifornia.edu/vocab#>  select (true as ?ok) where {[] oap:username ?o; oap:is-public "true"; oap:is-login-allowed "true". }' | tail -n 1`;
+    local public=`arq -q --results=csv --query=- --data=${G[cache]}/users.${username}.${N}.jsonld <<<'PREFIX oap: <http://oapolicy.universityofcalifornia.edu/vocab#>  select (true as ?ok) where {graph ?g {[] oap:username ?o; oap:is-public "true"; oap:is-login-allowed "true". }}' | tail -n 1`;
     if [[ "$public" =~ "true" &&  -n ${G[user_pubs]} ]] ; then
       # Get the user relationships, These never get added to the linked database,
       # they are just used to get the required relationships.
